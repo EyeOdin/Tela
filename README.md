@@ -4,9 +4,17 @@ Tela is a Krita plugin for Quick Settings.
 
 ### Features
 
-* Canvas Settings:
+* Brush:
+  * Blending Mode.
+  * Size.
+  * Opacity.
+  * Flow.
+  * SOF quick save.
+* Canvas:
   * Rotation.
   * Zoom.
+  * View Exposure.
+  * View Gamma.
   * Mirror.
   * Wrap.
 * Document:
@@ -20,17 +28,11 @@ Tela is a Krita plugin for Quick Settings.
   * Mirror Mode.
   * Guides Visible.
   * Guides Lock.
-* View:
-  * Brush Blending Mode.
-  * Brush Size.
-  * Brush Opacity.
-  * Brush Flow.
-  * SOF quick save.
-  * View Exposure.
-  * View Gamma.
-
 
 ### Preview
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/Teal_01.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/Teal_02.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/Teal_03.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_01.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_02.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_03.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_04.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_05.png)
+
