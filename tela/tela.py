@@ -21,7 +21,7 @@ DOCKER_NAME = "Tela"
 # Timer
 check_timer = 50  # 1000 = 1 SECOND (Zero will Disable checks)
 # Pigment.O Version Date
-tela_version = "2021_07_01"
+tela_version = "2021_07_06"
 # Numbers
 zero = 0.0
 half = 0.5
