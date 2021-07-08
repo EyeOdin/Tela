@@ -714,6 +714,7 @@ class Image(QThread):
                     self.doc_thumb = doc_thumb
                     self.SIGNAL_IMAGE.emit(self.doc_thumb)
             else:
+                self.doc_thumb = self.doc_default
                 self.SIGNAL_IMAGE.emit(self.doc_default)
             time.sleep(1)
 
