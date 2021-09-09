@@ -34,6 +34,9 @@ Tela is a Krita plugin for Quick Settings.
   * Mirror Mode
   * Guides Visible
   * Guides Lock
+* Settings:
+  * Preview Interval
+  * Record Window
 
 ### Preview
 ![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_01.png)
