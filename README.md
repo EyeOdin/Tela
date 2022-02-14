@@ -44,3 +44,7 @@ Tela is a Krita plugin for Quick Settings.
 ![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_03.png)
 ![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_04.png)
 ![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_05.png)
+
+
+### Support Development
+[![paypal](https://pics.paypal.com/00/s/NjA2OWU0ZmEtNjQ4MC00MWZhLTk5YzctM2VhZDA1MzgyMDQ0/file.PNG "Donation Link")](https://www.paypal.com/donate/?hosted_button_id=9FARNUYBC9R3J)
