@@ -1,4 +1,4 @@
-# Tela is a Krita plugin for Quick Settings.
+# Tela is a Krita plugin for a Canvas Tool Box
 # Copyright (C) 2021  Ricardo Jeremias.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,8 +17,8 @@
 
 # Imports
 from krita import *
-from PyQt5 import *
 from .tela_docker import *
+
 
 # Information
 __version__ = ' 1.0.0 '
@@ -31,4 +31,4 @@ __url__ = ' https://github.com/EyeOdin '
 DOCKER_ID = "pykrita_tela_docker"
 
 # Register Krita Docker
-Application.addDockWidgetFactory( DockWidgetFactory(DOCKER_ID, DockWidgetFactoryBase.DockRight, TelaDocker) )
+Application.addDockWidgetFactory( DockWidgetFactory( DOCKER_ID, DockWidgetFactoryBase.DockRight, Tela_Docker ) )

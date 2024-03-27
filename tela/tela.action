@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ActionCollection version="2" name="Scripts">
+    <Actions category="Scripts">
+        <text>Tela</text>
+
+
+        <Action name="tela_extension_menu_vector">
+          <icon></icon>
+          <text>Menu Vector</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_brush">
+          <icon></icon>
+          <text>Menu Brush</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_transform">
+          <icon></icon>
+          <text>Menu Transform</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_fill">
+          <icon></icon>
+          <text>Menu Fill</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_overlay">
+          <icon></icon>
+          <text>Menu Overlay</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_select">
+          <icon></icon>
+          <text>Menu Select</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_menu_camera">
+          <icon></icon>
+          <text>Menu Camera</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+
+
+        <Action name="tela_extension_tool_vector">
+          <icon></icon>
+          <text>Tool Vector</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_brush">
+          <icon></icon>
+          <text>Tool Brush</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_transform">
+          <icon></icon>
+          <text>Tool Transform</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_fill">
+          <icon></icon>
+          <text>Tool Fill</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_overlay">
+          <icon></icon>
+          <text>Tool Overlay</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_select">
+          <icon></icon>
+          <text>Tool Select</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_camera">
+          <icon></icon>
+          <text>Tool Camera</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>true</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+
+
+    </Actions>
+</ActionCollection>
