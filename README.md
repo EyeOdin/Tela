@@ -1,50 +1,24 @@
-### Purpose
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/LOGO/tela_logo_S.png)
 
-Tela is a Krita plugin for Quick Settings.
+# Purpose
 
-### Features
+Tela is a Krita plugin Canvas Tool Box.
 
-* Panel:
-  * Eraser
-  * Rotation
-  * Mirror  
-  * Wrap
-* Brush:
-  * Blending Mode
-  * Size
-  * Opacity
-  * Flow
-  * SOF quick save
-* Canvas:
-  * Rotation
-  * Zoom
-  * Exposure
-  * Gamma
-  * Mirror
-  * Wrap
-* Document:
-  * Width
-  * Height
-  * Resolution
-  * Reference & Deltas
-* Guides:
-  * Guides Horizontal
-  * Guides Vertical
-  * Sort Mode
-  * Mirror Mode
-  * Guides Visible
-  * Guides Lock
-* Settings:
-  * Preview Interval
-  * Record Window
+# Features
 
-### Preview
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_01.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_02.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_03.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_04.png)
-![Picture](https://raw.githubusercontent.com/EyeOdin/Tela/main/tela/PREVIEWS/tela_05.png)
+* Compact Tool Box
+* Read ![wiki](https://github.com/EyeOdin/Tela/wiki) for more information
+
+# Preview
+
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_toolbox.png)
 
 
-### Support Development
-[![paypal](https://pics.paypal.com/00/s/NjA2OWU0ZmEtNjQ4MC00MWZhLTk5YzctM2VhZDA1MzgyMDQ0/file.PNG "Donation Link")](https://www.paypal.com/donate/?hosted_button_id=9FARNUYBC9R3J)
+# Support
+
+This project will remain Open source and available to all users.\
+Support with donations to keep the project alive and maintained.
+
+<a href="https://www.paypal.com/donate/?hosted_button_id=9FARNUYBC9R3J">
+  <img src="https://pics.paypal.com/00/s/NjA2OWU0ZmEtNjQ4MC00MWZhLTk5YzctM2VhZDA1MzgyMDQ0/file.PNG" width="200" alt="Donation Link">
+</a>
