@@ -789,7 +789,7 @@ class Tela_Docker( DockWidget ):
 
     def MirrorFix_Side( self, SIGNAL_SIDE ):
         if ( ( self.canvas() is not None ) and ( self.canvas().view() is not None ) ):
-            boolean = QMessageBox.question( self, "MIRROR FIX", f"Correct Selected Layer(s) ?\nSource = { SIGNAL_SIDE }", QMessageBox.Yes, QMessageBox.No )
+            boolean = QMessageBox.question( self, "TELA", f"Mirror Fix Selected Layer(s) ?\nSource = { SIGNAL_SIDE }", QMessageBox.Yes, QMessageBox.No )
             if ( boolean == QMessageBox.Yes and SIGNAL_SIDE != None ):
                 self.MirrorFix_Run( SIGNAL_SIDE )
     def MirrorFix_Run( self, side ):
