@@ -7,6 +7,9 @@ Tela is a Krita plugin Canvas Tool Box.
 # Features
 
 * Compact Tool Box
+* Action Options
+* View Options
+* MirrorFix
 * Read ![wiki](https://github.com/EyeOdin/Tela/wiki) for more information
 
 # Preview
