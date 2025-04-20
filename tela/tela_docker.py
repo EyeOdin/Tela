@@ -31,7 +31,7 @@ from .tela_modulo import (
 
 # Plugin
 DOCKER_NAME = "Tela"
-tela_version = "2024_01_23"
+tela_version = "2025_04_20"
 
 #endregion
 
@@ -141,7 +141,7 @@ class Tela_Docker( DockWidget ):
         self.my = 10
 
         # QTimer
-        self.check_timer = 1000 # 1sec
+        self.press_time = 500 # 1000=1sec
 
         # Toolbox and Others
         self.Variables_Clean()
@@ -423,47 +423,47 @@ class Tela_Docker( DockWidget ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_vector = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Vector( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Vector( False ) )
     def Hold_Brush( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_brush = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Brush( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Brush( False ) )
     def Hold_Transform( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_transform = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Transform( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Transform( False ) )
     def Hold_Color( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_color = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Color( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Color( False ) )
     def Hold_Overlay( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_overlay = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Overlay( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Overlay( False ) )
     def Hold_Select( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_select = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Select( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Select( False ) )
     def Hold_Camera( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_camera = True
-        QtCore.QTimer.singleShot( self.check_timer, lambda: self.Menu_Camera( False ) )
+        QtCore.QTimer.singleShot( self.press_time, lambda: self.Menu_Camera( False ) )
     def Hold_Action( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_action = True
-        QtCore.QTimer.singleShot( self.check_timer, self.Menu_Action )
+        QtCore.QTimer.singleShot( self.press_time, self.Menu_Action )
     def Hold_View( self ):
         self.Menu_Clear()
         self.Variables_Clean()
         self.menu_view = True
-        QtCore.QTimer.singleShot( self.check_timer, self.Menu_View )
+        QtCore.QTimer.singleShot( self.press_time, self.Menu_View )
         
     # Release
     def Release_Vector( self ):
@@ -1051,4 +1051,7 @@ class Tela_Docker( DockWidget ):
     # self.setWindowFlags( QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint )
     """
 
+    """
+    QTimer.singleShot( 0, lambda: self.MirrorFix_Invert( ki, ad, side, new_node ) )
+    """
     #endregion
