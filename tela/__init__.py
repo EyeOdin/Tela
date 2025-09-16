@@ -17,7 +17,7 @@
 
 # Imports
 from krita import *
-from .tela_docker import *
+from .tela_extension import *
 
 
 # Information
@@ -27,8 +27,7 @@ __author__ = ' Ricardo Jeremias '
 __email__ = ' jeremy6321478@gmail.com '
 __url__ = ' https://github.com/EyeOdin '
 
-# Name the Python Script for the program
-DOCKER_ID = "pykrita_tela_docker"
 
-# Register Krita Docker
-Application.addDockWidgetFactory( DockWidgetFactory( DOCKER_ID, DockWidgetFactoryBase.DockRight, Tela_Docker ) )
+# Register Krita Extension
+ki = Krita.instance()
+ki.addExtension( Tela_Extension( ki ) )
