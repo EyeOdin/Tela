@@ -230,9 +230,10 @@ class Color_Panel( QWidget ):
         self.origin_hue = self.s1
         # Interaction
         if ( event.modifiers() == QtCore.Qt.ControlModifier and event.buttons() == QtCore.Qt.LeftButton ):
-            self.operation = "color_1"
             self.hue_circle = True
+            self.operation = "color_1"
         if ( event.modifiers() == QtCore.Qt.NoModifier and event.buttons() == QtCore.Qt.LeftButton ):
+            self.hue_circle = False
             self.operation = "color_23"
             self.Color_23( ex, ey, False )
         self.update()
@@ -265,10 +266,8 @@ class Color_Panel( QWidget ):
         self.s1 = self.Limit_Cycle( self.origin_hue + delta, 1 )
         # Signals
         inv_s3 = ( 1 - self.s3 )
-        if apply == False:
-            self.SIGNAL_PREVIEW.emit( [ self.s1, self.s2, inv_s3 ] )
-        else:
-            self.SIGNAL_APPLY.emit( [ self.s1, self.s2, inv_s3 ] )
+        if apply == False:  self.SIGNAL_PREVIEW.emit( [ self.s1, self.s2, inv_s3 ] )
+        else:               self.SIGNAL_APPLY.emit( [ self.s1, self.s2, inv_s3 ] )
     def Color_23( self, ex, ey, apply ):
         # Variables
         self.ex = self.Limit_Range( ex, 0, self.ww )
@@ -277,10 +276,8 @@ class Color_Panel( QWidget ):
         self.s3 = self.ey / self.hh
         # Signals
         inv_s3 = ( 1 - self.s3 )
-        if apply == False:
-            self.SIGNAL_PREVIEW.emit( [ self.s1, self.s2, inv_s3 ] )
-        else:
-            self.SIGNAL_APPLY.emit( [ self.s1, self.s2, inv_s3 ] )
+        if apply == False:  self.SIGNAL_PREVIEW.emit( [ self.s1, self.s2, inv_s3 ] )
+        else:               self.SIGNAL_APPLY.emit( [ self.s1, self.s2, inv_s3 ] )
 
     # Paint Style
     def paintEvent( self, event ):

@@ -630,8 +630,8 @@ class Tela_Extension( Extension ):
         # Progress Bar
         self.progress_bar.setStyleSheet( "#progress_bar{ background-color: rgba( 0, 0, 0, 0 ); }" )
         # Actions
-        self.menu_action.setIcon(       ki.icon( "updateColorize" ) )
-        self.menu_view.setIcon(         ki.icon( "view-filter" ) )
+        self.menu_action.setIcon(       ki.icon( "hamburger_menu_dots" ) )
+        self.menu_view.setIcon(         ki.icon( "gridbrush" ) )
         self.menu_mirror_fix.setIcon(   ki.icon( self.icon_mirrorfix )   )
         self.menu_color_picker.setIcon( ki.icon( "close-tab" ) )
         # Hide
