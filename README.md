@@ -31,9 +31,17 @@ Tela is a Krita plugin Canvas Tool Box.
 
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_camera_tools.png)
 
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_progress_bar.png)
+
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_action_options.png)
 
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_view_options.png)
+
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_a.png)
+
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_b.png)
+
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_c.png)
 
 # Support
 
