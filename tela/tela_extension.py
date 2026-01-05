@@ -284,6 +284,12 @@ class Tela_Extension( Extension ):
         # Return
         if ( canvas is not None ) and ( view is not None ): return True
         else:                                               return False
+    # Progress Bar
+    def ProgressBar_StyleSheet( self, percentage, background ):
+        style_sheet = str()
+        style_sheet += "QProgressBar { background-color: " + background + "; border-radius: 0px; }"
+        style_sheet += "QProgressBar::chunk { background-color: " + percentage + "; }"
+        return style_sheet
 
     #endregion
     #region Widgets
@@ -1570,6 +1576,7 @@ class Tela_Extension( Extension ):
         c_link        = palette.link().color().name()
         c_visited     = palette.linkVisited().color().name()
         # c_accent      = palette.accent().color().name() # qt6
+        a_black       = "#00000000"
 
         # QPushbuttons
         self.Interface_Highlight( self.menu_vector,       "menu_vector",    c_highlight )
@@ -1579,7 +1586,10 @@ class Tela_Extension( Extension ):
         self.Interface_Highlight( self.menu_overlay,      "menu_overlay",   c_highlight )
         self.Interface_Highlight( self.menu_select,       "menu_select",    c_highlight )
         self.Interface_Highlight( self.menu_camera,       "menu_camera",    c_highlight )
-        # non pressable buttons
+        # Progress Bar
+        progress_bar_style_sheet = self.ProgressBar_StyleSheet( c_highlight, a_black )
+        self.progress_bar.setStyleSheet( progress_bar_style_sheet )
+        # Other Buttons
         self.Interface_Highlight( self.menu_action,       "menu_action",    c_highlight )
         self.Interface_Highlight( self.menu_view,         "menu_view",      c_highlight )
         self.Interface_Highlight( self.menu_mirror_fix,   "mirror_fix",     c_highlight )
@@ -1589,6 +1599,7 @@ class Tela_Extension( Extension ):
         self.Interface_Slider( self.color_picker.s1, c_visited, w_mid, w_mid, w_midlight )
         self.Interface_Slider( self.color_picker.s2, c_visited, w_mid, w_mid, w_midlight )
         self.Interface_Slider( self.color_picker.s3, c_visited, w_mid, w_mid, w_midlight )
+
     def Window_Closed( self ):
         pass
 
