@@ -12,36 +12,19 @@ Tela is a Krita plugin Canvas Tool Box.
 * MirrorFix
 * Color Picker ( connects to ![Pigment.O](https://github.com/EyeOdin/Pigment.O) )
 * Read ![wiki](https://github.com/EyeOdin/Tela/wiki) for more information
+* How to ![install a plugin](https://github.com/EyeOdin/Tela/wiki/Plugin-Instalation)
 
 # Preview
 
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_open_close.webp)
 
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_vector_tools.png)
-
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_brush_tools.png)
 
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_transform_tools.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_tools.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_overlay_tools.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_select_tools.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_camera_tools.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_progress_bar.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_action_options.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_view_options.png)
+![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_mirrorfix_operation.png)
 
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_a.png)
 
 ![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_b.png)
-
-![Picture](https://raw.githubusercontent.com/EyeOdin/tela/master/tela/PREVIEWS/ta_color_picker_c.png)
 
 # Support
 
