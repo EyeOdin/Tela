@@ -33,7 +33,7 @@ from .tela_modulo import (
 #endregion
 #region Global Variables
 
-version = "2026_01_01"
+EXTENSION_NAME = "Tela"
 
 #endregion
 
@@ -63,15 +63,14 @@ class Tela_Extension( Extension ):
         color_picker_ui = os.path.join( self.directory_plugin, "color_picker.ui" )
         self.color_picker = uic.loadUi( color_picker_ui, QWidget() )
     def Variables( self ):
-        # System
-        ki = Krita.instance()
-
         # None Variables
         self.qmenu = None
         self.stacked_widget = None
         self.qmdiarea = None
-        self.window_list = []
+        self.window_list = list()
 
+        # Variables
+        ki = Krita.instance()
         # Vector
         icon_select_tool = ki.icon( "select" )
         icon_text_tool = ki.icon( "draw-text" )
@@ -171,6 +170,7 @@ class Tela_Extension( Extension ):
                 "pan_tool"           : [ "Pan",         "PanTool",                           icon_pan_tool,           1 ],
                 },
         }
+        # Operation holds the favorite tools before starting
         self.operation = {
             "vector"    : "InteractionTool",
             "brush"     : "KritaShape/KisToolBrush",
@@ -183,7 +183,7 @@ class Tela_Extension( Extension ):
         # Krita ToolBox ( Install Event Filter )
         self.krita_toolbox = list()
 
-        # Tool Box
+        # Tool Box Widget
         self.menu_vector = None
         self.menu_brush = None
         self.menu_transform = None
@@ -191,18 +191,28 @@ class Tela_Extension( Extension ):
         self.menu_overlay = None
         self.menu_select = None
         self.menu_camera = None
-        # Progress Bar
+        # Progress Bar Widget
         self.progress_bar = None
-        # Actions
+        # Actions Widget
         self.menu_action = None
         self.menu_view = None
         self.menu_mirror_fix = None
         self.menu_color_picker = None
-        # Hide
-        self.tela_hide = None
+        # Widgets Widget
+        self.menu_tela = None
+
+        # Index
+        self.index_vector = "select_tool"
+        self.index_brush = "freehand_brush"
+        self.index_transform = "transform_tool"
+        self.index_color = "sampler_tool"
+        self.index_overlay = "reference_tool"
+        self.index_select = "freehand_select"
+        self.index_camera = "pan_tool"
 
         # State
-        self.state_hide = False
+        self.state_hide_extra = False
+        self.state_hide_tela = False
 
         # Pushbutton Size
         self.pba = 35
@@ -216,16 +226,15 @@ class Tela_Extension( Extension ):
         self.menu_hold = None
 
         # Color Picker Module
-        self.pigmento_check = False # state of the module
-        self.pigmento_pyid = "pykrita_pigment_o_picker_docker"
-        self.pigmento_module = None # pointer to the module
+        self.pigmento_picker = None
+        self.pigmento_picker_pyid = "pykrita_pigment_o_picker_docker"
 
         # ProgressBar
         self.krita_progress_bar_id = "ProgressBar"
         self.krita_progress_bar_module = None
 
         # Color Picker
-        self.qpixmap_list = []
+        self.qpixmap_list = list()
         self.hue = 360 # 360
         self.svl = 255 # 255
         self.wheel_space = None # HSV HSL HCY ARD
@@ -259,6 +268,19 @@ class Tela_Extension( Extension ):
     #endregion
     #region Management
 
+    # Kritarc
+    def Kritarc_Read( self, group, key, default, mode ):
+        value = Krita.instance().readSetting( group, key, "" )
+        invalid = [ "", None ]
+        if value not in invalid:
+            value = mode( value )
+        else:
+            value = default
+            self.Kritarc_Write( group, key, default )
+        return value
+    def Kritarc_Write( self, group, key, value ):
+        Krita.instance().writeSetting( group, key, str( value ) )
+
     # Warnnings
     def Message_Float( self, operation, message, icon ):
         ki = Krita.instance()
@@ -291,10 +313,182 @@ class Tela_Extension( Extension ):
         style_sheet += "QProgressBar::chunk { background-color: " + percentage + "; }"
         return style_sheet
 
+    # Theme
+    def Style_Icon( self ):
+        # Variables
+        ki = Krita.instance()
+        # Vector
+        icon_select_tool = ki.icon( "select" )
+        icon_text_tool = ki.icon( "draw-text" )
+        icon_edit_tool = ki.icon( "shape_handling" )
+        icon_calligraphy_tool = ki.icon( "calligraphy" )
+        # Brush
+        icon_freehand_brush = ki.icon( "krita_tool_freehand" )
+        icon_line_brush = ki.icon( "krita_tool_line" )
+        icon_rectangle_brush = ki.icon( "krita_tool_rectangle" )
+        icon_ellipse_brush = ki.icon( "krita_tool_ellipse" )
+        icon_polygon_brush = ki.icon( "krita_tool_polygon" )
+        icon_polyline_brush = ki.icon( "polyline" )
+        icon_bezier_brush = ki.icon( "krita_draw_path" )
+        icon_path_brush = ki.icon( "krita_tool_freehandvector" )
+        icon_dynamic_brush = ki.icon( "krita_tool_dyna" )
+        icon_multi_brush = ki.icon( "krita_tool_multihand" )
+        # Transform
+        icon_transform_tool = ki.icon( "krita_tool_transform" )
+        icon_move_tool = ki.icon( "krita_tool_move" )
+        icon_crop_tool = ki.icon( "tool_crop" )
+        # Color
+        icon_gradient_tool = ki.icon( "krita_tool_gradient" )
+        icon_sampler_tool = ki.icon( "krita_tool_color_sampler" )
+        icon_colorize_tool = ki.icon( "krita_tool_lazybrush" )
+        icon_patch_tool = ki.icon( "krita_tool_smart_patch" )
+        icon_fill_tool = ki.icon( "krita_tool_color_fill" )
+        icon_enclose_tool = ki.icon( "krita_tool_enclose_and_fill" )
+        # Overlay
+        icon_assistant_tool = ki.icon( "krita_tool_assistant" )
+        icon_measure_tool = ki.icon( "krita_tool_measure" )
+        icon_reference_tool = ki.icon( "krita_tool_reference_images" )
+        # Select
+        icon_rectangle_select = ki.icon( "tool_rect_selection" )
+        icon_elliptical_select = ki.icon( "tool_elliptical_selection" )
+        icon_polygon_select = ki.icon( "tool_polygonal_selection" )
+        icon_freehand_select = ki.icon( "tool_outline_selection")
+        icon_contiguous_select = ki.icon( "tool_contiguous_selection" )
+        icon_color_select = ki.icon( "tool_similar_selection")
+        icon_bezier_select = ki.icon( "tool_path_selection")
+        icon_magnetic_select = ki.icon( "tool_magnetic_selection" )
+        # Camera
+        icon_zoom_tool = ki.icon( "tool_zoom" )
+        icon_pan_tool = ki.icon( "tool_pan" )
+        # Mirror Fix
+        self.icon_mirrorfix = "wraparound"
+
+        # Toolbox ( name, pykrita, qicon )
+        self.tool["vector"]["select_tool"][2]       = icon_select_tool
+        self.tool["vector"]["text_tool"][2]         = icon_text_tool
+        self.tool["vector"]["edit_tool"][2]         = icon_edit_tool
+        self.tool["vector"]["calligraphy_tool"][2]  = icon_calligraphy_tool
+        # Brush
+        self.tool["brush"]["freehand_brush"][2]     = icon_freehand_brush
+        self.tool["brush"]["line_brush"][2]         = icon_line_brush
+        self.tool["brush"]["rectangle_brush"][2]    = icon_rectangle_brush
+        self.tool["brush"]["ellipse_brush"][2]      = icon_ellipse_brush
+        self.tool["brush"]["polygon_brush"][2]      = icon_polygon_brush
+        self.tool["brush"]["polyline_brush"][2]     = icon_polyline_brush
+        self.tool["brush"]["bezier_brush"][2]       = icon_bezier_brush
+        self.tool["brush"]["path_brush"][2]         = icon_path_brush
+        self.tool["brush"]["dynamic_brush"][2]      = icon_dynamic_brush
+        self.tool["brush"]["multi_brush"][2]        = icon_multi_brush
+        # Transform
+        self.tool["transform"]["transform_tool"][2] = icon_transform_tool
+        self.tool["transform"]["move_tool"][2]      = icon_move_tool
+        self.tool["transform"]["crop_tool"][2]      = icon_crop_tool
+        # Color
+        self.tool["color"]["gradient_tool"][2]      = icon_gradient_tool
+        self.tool["color"]["sampler_tool"][2]       = icon_sampler_tool
+        self.tool["color"]["colorize_tool"][2]      = icon_colorize_tool
+        self.tool["color"]["patch_tool"][2]         = icon_patch_tool
+        self.tool["color"]["fill_tool"][2]          = icon_fill_tool
+        self.tool["color"]["enclose_tool"][2]       = icon_enclose_tool
+        # Overlay
+        self.tool["overlay"]["assistant_tool"][2]   = icon_assistant_tool
+        self.tool["overlay"]["measure_tool"][2]     = icon_measure_tool
+        self.tool["overlay"]["reference_tool"][2]   = icon_reference_tool
+        # Select
+        self.tool["select"]["rectangle_select"][2]  = icon_rectangle_select
+        self.tool["select"]["elliptical_select"][2] = icon_elliptical_select
+        self.tool["select"]["polygon_select"][2]    = icon_polygon_select
+        self.tool["select"]["freehand_select"][2]   = icon_freehand_select
+        self.tool["select"]["contiguous_select"][2] = icon_contiguous_select
+        self.tool["select"]["color_select"][2]      = icon_color_select
+        self.tool["select"]["bezier_select"][2]     = icon_bezier_select
+        self.tool["select"]["magnetic_select"][2]   = icon_magnetic_select
+        # Camera
+        self.tool["camera"]["zoom_tool"][2]         = icon_zoom_tool
+        self.tool["camera"]["pan_tool"][2]          = icon_pan_tool
+
+        # Tool Box
+        self.menu_vector.setIcon(    self.tool["vector"][self.index_vector][2] )
+        self.menu_brush.setIcon(     self.tool["brush"][self.index_brush][2] )
+        self.menu_transform.setIcon( self.tool["transform"][self.index_transform][2] )
+        self.menu_color.setIcon(     self.tool["color"][self.index_color][2] )
+        self.menu_overlay.setIcon(   self.tool["overlay"][self.index_overlay][2] )
+        self.menu_select.setIcon(    self.tool["select"][self.index_select][2] )
+        self.menu_camera.setIcon(    self.tool["camera"][self.index_camera][2] )
+        # Actions
+        self.menu_action.setIcon(        ki.icon( "hamburger_menu_dots" ) )
+        self.menu_view.setIcon(          ki.icon( "gridbrush" ) )
+        self.menu_mirror_fix.setIcon(    ki.icon( self.icon_mirrorfix )   )
+        if self.pigmento_picker != None: self.menu_color_picker.setIcon( ki.icon( "krita_tool_ellipse" ) )
+        else:                            self.menu_color_picker.setIcon( ki.icon( "close-tab" ) )
+        # Hide
+        self.menu_tela.setIcon(             ki.icon( "arrow-up" ) )
+    def Style_Theme( self ):
+        # Read
+        palette = QApplication.palette()
+        base = palette.base().color()
+        # Theme Colors
+        # Window ( Dark )
+        w_alternate   = palette.alternateBase().color().name()
+        w_base        = base.name()
+        w_button      = palette.button().color().name()
+        w_dark        = palette.dark().color().name()
+        w_light       = palette.light().color().name()
+        w_mid         = palette.mid().color().name()
+        w_midlight    = palette.midlight().color().name()
+        w_shadow      = palette.shadow().color().name()
+        w_tool_tip    = palette.toolTipBase().color().name()
+        w_window      = palette.window().color().name()
+        # Text ( Bright )
+        t_bright      = palette.brightText().color().name()
+        t_button      = palette.buttonText().color().name()
+        t_highlighted = palette.highlightedText().color().name()
+        t_placeholder = palette.placeholderText().color().name()
+        t_text        = palette.text().color().name()
+        t_tool_tip    = palette.toolTipText().color().name()
+        t_window      = palette.windowText().color().name()
+        # Color
+        c_highlight   = palette.highlight().color().name()
+        c_link        = palette.link().color().name()
+        c_visited     = palette.linkVisited().color().name()
+        # c_accent      = palette.accent().color().name() # qt6
+        a_black       = "#00000000"
+
+        # Colors
+        win = palette.window().color().getHsvF()
+        hue = palette.highlight().color().getHsvF()
+        but = palette.button().color().getHsvF()
+        if win[2] > 0.5:    h3 = -0.3; p3 = -0.1 # Light Theme
+        else:               h3 = +0.3; p3 = +0.1 # Dark Theme
+        handle   = QColor().fromHsvF( but[0], but[1], but[2] + h3 ).name()
+        page     = QColor().fromHsvF( but[0], but[1], but[2] + p3 ).name()
+        # QPushbuttons
+        self.Interface_Highlight( self.menu_vector,       "menu_vector",    c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_brush,        "menu_brush",     c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_transform,    "menu_transform", c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_color,        "menu_color",     c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_overlay,      "menu_overlay",   c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_select,       "menu_select",    c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_camera,       "menu_camera",    c_highlight, t_bright )
+        # Progress Bar
+        progress_bar_style_sheet = self.ProgressBar_StyleSheet( c_highlight, a_black )
+        self.progress_bar.setStyleSheet( progress_bar_style_sheet )
+        # Other Buttons
+        self.Interface_Highlight( self.menu_action,       "menu_action",    c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_view,         "menu_view",      c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_mirror_fix,   "mirror_fix",     c_highlight, t_bright )
+        self.Interface_Highlight( self.menu_color_picker, "color_picker",   c_highlight, t_bright )
+
+        # Color_Picker
+        self.Interface_Slider( self.color_picker.s1, handle, w_mid, page, page )
+        self.Interface_Slider( self.color_picker.s2, handle, w_mid, page, page )
+        self.Interface_Slider( self.color_picker.s3, handle, w_mid, page, page )
+        self.color_picker.setStyleSheet( "#color_picker{ background-color: " + w_button + "; }" )
+
     #endregion
     #region Widgets
 
-    # Widgets
+    # Toolbox
     def Toolbox_Display( self ):
         # Main Window
         self.stacked_widget = self.window.qwindow().centralWidget()
@@ -303,7 +497,7 @@ class Tela_Extension( Extension ):
 
         # Display
         self.Interface_Create( self.qmdiarea )
-        self.Tela_Geometry( self.state_hide )
+        self.Tela_Geometry( self.action_hide_extra.isChecked(), self.action_hide_tela.isChecked() )
         # Color Picker
         self.color_picker.setParent( self.qmdiarea )
         self.color_picker.hide()
@@ -312,7 +506,7 @@ class Tela_Extension( Extension ):
         self.krita_progress_bar.valueChanged.connect( self.Progress_Bar )
 
         # Import Pigment.o module
-        if self.pigmento_check == False:
+        if self.pigmento_picker == None:
             self.Import_Pigment_O()
     def Toolbox_Button( self ):
         qwindow = Krita.instance().activeWindow().qwindow()
@@ -359,7 +553,41 @@ class Tela_Extension( Extension ):
         # Camera Checks
         self.button_zoom_tool         = qwindow.findChild( QToolButton, self.tool["camera"]["zoom_tool"][1] )
         self.button_pan_tool          = qwindow.findChild( QToolButton, self.tool["camera"]["pan_tool"][1] )
-    def Update_Tool( self ):
+    def Toolbox_Filter_Install( self ):
+        app = QApplication.instance()
+        list_widget = app.allWidgets()
+        list_key = list()
+        key_a = self.tool.keys()
+        for a in key_a:
+            key_b = self.tool[a].keys()
+            for b in key_b:
+                item = self.tool[a][b][1]
+                list_key.append( item )
+        for widget in list_widget:
+            name = widget.objectName()
+            if name in list_key:
+                self.krita_toolbox.append( widget )
+                widget.installEventFilter( self )
+    def Toolbox_Load( self ):
+        # Kritarc
+        hide_extra = self.Kritarc_Read( EXTENSION_NAME, "hide_extra", True, eval )
+        hide_tela  = self.Kritarc_Read( EXTENSION_NAME, "hide_tela",  False, eval )
+        # Extra Action
+        self.action_hide_extra.blockSignals( True )
+        self.action_hide_extra.setChecked( hide_extra )
+        self.action_hide_extra.blockSignals( False )
+        # Tela Action
+        self.action_hide_tela.blockSignals( True )
+        self.action_hide_tela.setChecked( hide_tela )
+        self.action_hide_tela.blockSignals( False )
+        # Tela Button
+        self.menu_tela.blockSignals( True )
+        self.menu_tela.setChecked( hide_tela )
+        self.menu_tela.blockSignals( False )
+        # Geometry
+        self.Tela_Geometry( hide_extra, hide_tela )
+    # Tool
+    def Tool_Update( self ):
         check_canvas = self.Check_Canvas()
         if check_canvas == True:
             # Vector Checks
@@ -443,51 +671,50 @@ class Tela_Extension( Extension ):
             except:pass
 
             # Group
-            if   select_tool       == True : self.Apply_Tool( "vector",    "select_tool",       self.menu_vector )
-            elif text_tool         == True : self.Apply_Tool( "vector",    "text_tool",         self.menu_vector )
-            elif edit_tool         == True : self.Apply_Tool( "vector",    "edit_tool",         self.menu_vector )
-            elif calligraphy_tool  == True : self.Apply_Tool( "vector",    "calligraphy_tool",  self.menu_vector )
+            if   select_tool       == True : self.Tool_Apply( "vector",    "select_tool",       self.menu_vector )
+            elif text_tool         == True : self.Tool_Apply( "vector",    "text_tool",         self.menu_vector )
+            elif edit_tool         == True : self.Tool_Apply( "vector",    "edit_tool",         self.menu_vector )
+            elif calligraphy_tool  == True : self.Tool_Apply( "vector",    "calligraphy_tool",  self.menu_vector )
             # Brush Checks
-            elif freehand_brush    == True : self.Apply_Tool( "brush",     "freehand_brush",    self.menu_brush )
-            elif line_brush        == True : self.Apply_Tool( "brush",     "line_brush",        self.menu_brush )
-            elif rectangle_brush   == True : self.Apply_Tool( "brush",     "rectangle_brush",   self.menu_brush )
-            elif ellipse_brush     == True : self.Apply_Tool( "brush",     "ellipse_brush",     self.menu_brush )
-            elif polygon_brush     == True : self.Apply_Tool( "brush",     "polygon_brush",     self.menu_brush )
-            elif polyline_brush    == True : self.Apply_Tool( "brush",     "polyline_brush",    self.menu_brush )
-            elif bezier_brush      == True : self.Apply_Tool( "brush",     "bezier_brush",      self.menu_brush )
-            elif path_brush        == True : self.Apply_Tool( "brush",     "path_brush",        self.menu_brush )
-            elif dynamic_brush     == True : self.Apply_Tool( "brush",     "dynamic_brush",     self.menu_brush )
-            elif multi_brush       == True : self.Apply_Tool( "brush",     "multi_brush",       self.menu_brush )
+            elif freehand_brush    == True : self.Tool_Apply( "brush",     "freehand_brush",    self.menu_brush )
+            elif line_brush        == True : self.Tool_Apply( "brush",     "line_brush",        self.menu_brush )
+            elif rectangle_brush   == True : self.Tool_Apply( "brush",     "rectangle_brush",   self.menu_brush )
+            elif ellipse_brush     == True : self.Tool_Apply( "brush",     "ellipse_brush",     self.menu_brush )
+            elif polygon_brush     == True : self.Tool_Apply( "brush",     "polygon_brush",     self.menu_brush )
+            elif polyline_brush    == True : self.Tool_Apply( "brush",     "polyline_brush",    self.menu_brush )
+            elif bezier_brush      == True : self.Tool_Apply( "brush",     "bezier_brush",      self.menu_brush )
+            elif path_brush        == True : self.Tool_Apply( "brush",     "path_brush",        self.menu_brush )
+            elif dynamic_brush     == True : self.Tool_Apply( "brush",     "dynamic_brush",     self.menu_brush )
+            elif multi_brush       == True : self.Tool_Apply( "brush",     "multi_brush",       self.menu_brush )
             # Transform Checks
-            elif transform_tool    == True : self.Apply_Tool( "transform", "transform_tool",    self.menu_transform )
-            elif move_tool         == True : self.Apply_Tool( "transform", "move_tool",         self.menu_transform )
-            elif crop_tool         == True : self.Apply_Tool( "transform", "crop_tool",         self.menu_transform )
+            elif transform_tool    == True : self.Tool_Apply( "transform", "transform_tool",    self.menu_transform )
+            elif move_tool         == True : self.Tool_Apply( "transform", "move_tool",         self.menu_transform )
+            elif crop_tool         == True : self.Tool_Apply( "transform", "crop_tool",         self.menu_transform )
             # Color Checks
-            elif gradient_tool     == True : self.Apply_Tool( "color",     "gradient_tool",     self.menu_color )
-            elif sampler_tool      == True : self.Apply_Tool( "color",     "sampler_tool",      self.menu_color )
-            elif colorize_tool     == True : self.Apply_Tool( "color",     "colorize_tool",     self.menu_color )
-            elif patch_tool        == True : self.Apply_Tool( "color",     "patch_tool",        self.menu_color )
-            elif fill_tool         == True : self.Apply_Tool( "color",     "fill_tool",         self.menu_color )
-            elif enclose_tool      == True : self.Apply_Tool( "color",     "enclose_tool",      self.menu_color )
+            elif gradient_tool     == True : self.Tool_Apply( "color",     "gradient_tool",     self.menu_color )
+            elif sampler_tool      == True : self.Tool_Apply( "color",     "sampler_tool",      self.menu_color )
+            elif colorize_tool     == True : self.Tool_Apply( "color",     "colorize_tool",     self.menu_color )
+            elif patch_tool        == True : self.Tool_Apply( "color",     "patch_tool",        self.menu_color )
+            elif fill_tool         == True : self.Tool_Apply( "color",     "fill_tool",         self.menu_color )
+            elif enclose_tool      == True : self.Tool_Apply( "color",     "enclose_tool",      self.menu_color )
             # Overlay Checks
-            elif assistant_tool    == True : self.Apply_Tool( "overlay",   "assistant_tool",    self.menu_overlay )
-            elif measure_tool      == True : self.Apply_Tool( "overlay",   "measure_tool",      self.menu_overlay )
-            elif reference_tool    == True : self.Apply_Tool( "overlay",   "reference_tool",    self.menu_overlay )
+            elif assistant_tool    == True : self.Tool_Apply( "overlay",   "assistant_tool",    self.menu_overlay )
+            elif measure_tool      == True : self.Tool_Apply( "overlay",   "measure_tool",      self.menu_overlay )
+            elif reference_tool    == True : self.Tool_Apply( "overlay",   "reference_tool",    self.menu_overlay )
             # Selection Checks
-            elif rectangle_select  == True : self.Apply_Tool( "select",    "rectangle_select",  self.menu_select )
-            elif elliptical_select == True : self.Apply_Tool( "select",    "elliptical_select", self.menu_select )
-            elif polygon_select    == True : self.Apply_Tool( "select",    "polygon_select",    self.menu_select )
-            elif freehand_select   == True : self.Apply_Tool( "select",    "freehand_select",   self.menu_select )
-            elif contiguous_select == True : self.Apply_Tool( "select",    "contiguous_select", self.menu_select )
-            elif color_select      == True : self.Apply_Tool( "select",    "color_select",      self.menu_select )
-            elif bezier_select     == True : self.Apply_Tool( "select",    "bezier_select",     self.menu_select )
-            elif magnetic_select   == True : self.Apply_Tool( "select",    "magnetic_select",   self.menu_select )
+            elif rectangle_select  == True : self.Tool_Apply( "select",    "rectangle_select",  self.menu_select )
+            elif elliptical_select == True : self.Tool_Apply( "select",    "elliptical_select", self.menu_select )
+            elif polygon_select    == True : self.Tool_Apply( "select",    "polygon_select",    self.menu_select )
+            elif freehand_select   == True : self.Tool_Apply( "select",    "freehand_select",   self.menu_select )
+            elif contiguous_select == True : self.Tool_Apply( "select",    "contiguous_select", self.menu_select )
+            elif color_select      == True : self.Tool_Apply( "select",    "color_select",      self.menu_select )
+            elif bezier_select     == True : self.Tool_Apply( "select",    "bezier_select",     self.menu_select )
+            elif magnetic_select   == True : self.Tool_Apply( "select",    "magnetic_select",   self.menu_select )
             # Camera Checks
-            elif zoom_tool         == True : self.Apply_Tool( "camera",    "zoom_tool",         self.menu_camera )
-            elif pan_tool          == True : self.Apply_Tool( "camera",    "pan_tool",          self.menu_camera )
+            elif zoom_tool         == True : self.Tool_Apply( "camera",    "zoom_tool",         self.menu_camera )
+            elif pan_tool          == True : self.Tool_Apply( "camera",    "pan_tool",          self.menu_camera )
             else:self.Message_Float( "ERROR", "new tool present ?", "broken-preset" )
-
-    def Apply_Tool( self, mode, tool, widget ):
+    def Tool_Apply( self, mode, tool, widget ):
         # Variables
         operation = self.tool[mode][tool][1]
         qicon = self.tool[mode][tool][2]
@@ -496,22 +723,6 @@ class Tela_Extension( Extension ):
         # UI
         widget.setIcon( qicon )
         widget.setChecked( True )
-    def Toolbox_Filter_Install( self ):
-        # Docker
-        pyid = "ToolBox"
-        dockers = Krita.instance().dockers()
-        for i in range( 0, len( dockers ) ):
-            if dockers[i].objectName() == pyid:
-                tool_box = dockers[i]
-        # Krita Tool Box
-        key_mg = self.tool.keys()
-        for mg in key_mg:
-            key_sg = self.tool[mg].keys()
-            for sg in key_sg:
-                item = self.tool[mg][sg][1]
-                child = tool_box.findChild( QToolButton, item )
-                self.krita_toolbox.append( child )
-                child.installEventFilter( self )
 
     # Interface
     def Interface_Create( self, parent ):
@@ -540,7 +751,7 @@ class Tela_Extension( Extension ):
         self.menu_mirror_fix   = QPushButton( "menu_mirror_fix", parent )
         self.menu_color_picker = QPushButton( "menu_color_picker", parent )
         # Hide
-        self.tela_hide = QPushButton( "hide", parent )
+        self.menu_tela         = QPushButton( "hide", parent )
 
         # Tool Box
         self.Interface_Push_Button(  self.menu_vector,       "menu_vector",       self.pba, self.pba, True,  True,  False )
@@ -561,7 +772,7 @@ class Tela_Extension( Extension ):
         self.Interface_Push_Button(  self.menu_mirror_fix,   "menu_mirror_fix",   self.pba, self.pbb, False, False, False )
         self.Interface_Push_Button(  self.menu_color_picker, "menu_color_picker", self.pba, self.pbb, False, False, False )
         # Hide
-        self.Interface_Push_Button(  self.tela_hide,         "state_hide",         50,       self.pbb, True,  False, True  )
+        self.Interface_Push_Button(  self.menu_tela,         "menu_tela",         50,       self.pbb, True,  False, True  )
 
         #endregion
         #region Connections
@@ -602,7 +813,7 @@ class Tela_Extension( Extension ):
         self.color_picker.s3.valueChanged.connect(   lambda: self.CS3_W( False ) )
         self.color_picker.s3.sliderReleased.connect( lambda: self.CS3_W( True ) )
         # Hide
-        self.tela_hide.toggled.connect( self.Tela_Hide )
+        self.menu_tela.toggled.connect( self.Hide_Tela_Button )
 
         # User Interface Update
         self.color_picker.installEventFilter( self )
@@ -620,22 +831,22 @@ class Tela_Extension( Extension ):
         # Krita Instance
         ki = Krita.instance()
         # Tool Box
-        self.menu_vector.setIcon(       self.tool["vector"]["select_tool"][2]       )
-        self.menu_brush.setIcon(        self.tool["brush"]["freehand_brush"][2]     )
-        self.menu_transform.setIcon(    self.tool["transform"]["transform_tool"][2] )
-        self.menu_color.setIcon(        self.tool["color"]["sampler_tool"][2]       )
-        self.menu_overlay.setIcon(      self.tool["overlay"]["reference_tool"][2]   )
-        self.menu_select.setIcon(       self.tool["select"]["freehand_select"][2]   )
-        self.menu_camera.setIcon(       self.tool["camera"]["pan_tool"][2]          )
+        self.menu_vector.setIcon(    self.tool["vector"][self.index_vector][2] )
+        self.menu_brush.setIcon(     self.tool["brush"][self.index_brush][2] )
+        self.menu_transform.setIcon( self.tool["transform"][self.index_transform][2] )
+        self.menu_color.setIcon(     self.tool["color"][self.index_color][2] )
+        self.menu_overlay.setIcon(   self.tool["overlay"][self.index_overlay][2] )
+        self.menu_select.setIcon(    self.tool["select"][self.index_select][2] )
+        self.menu_camera.setIcon(    self.tool["camera"][self.index_camera][2] )
         # Progress Bar
-        self.progress_bar.setStyleSheet( "#progress_bar{ background-color: rgba( 0, 0, 0, 0 ); }" )
+        self.progress_bar.setStyleSheet(    "#progress_bar{ background-color: rgba( 0, 0, 0, 0 ); }" )
         # Actions
-        self.menu_action.setIcon(       ki.icon( "hamburger_menu_dots" ) )
-        self.menu_view.setIcon(         ki.icon( "gridbrush" ) )
-        self.menu_mirror_fix.setIcon(   ki.icon( self.icon_mirrorfix )   )
-        self.menu_color_picker.setIcon( ki.icon( "close-tab" ) )
+        self.menu_action.setIcon(           ki.icon( "hamburger_menu_dots" ) )
+        self.menu_view.setIcon(             ki.icon( "gridbrush" ) )
+        self.menu_mirror_fix.setIcon(       ki.icon( self.icon_mirrorfix )   )
+        self.menu_color_picker.setIcon(     ki.icon( "close-tab" ) )
         # Hide
-        self.tela_hide.setIcon(         ki.icon( "arrow-up" ) )
+        self.menu_tela.setIcon(             ki.icon( "arrow-up" ) )
 
         #endregion
     def Interface_Push_Button( self, button, name, pw, ph, check, exclusive, flat ):
@@ -667,14 +878,14 @@ class Tela_Extension( Extension ):
         progress.setMaximum( 99 )
         progress.setValue( 0 )
         progress.setTextVisible( False )        
-    def Interface_Highlight( self, button, name, color ):
-        button.setStyleSheet( "#" + str( name ) + "::checked{ background-color : " + str( color ) + "; }" )
-    def Interface_Slider( self, widget, handle, border, page_add, page_sub ):
+    def Interface_Highlight( self, button, name, background, pen ):
+        button.setStyleSheet( "#" + str( name ) + "::checked{ background-color : " + str( background ) + ";}" )
+    def Interface_Slider( self, widget, handle, border, page_sub, page_add ):
         style_sheet = str()
-        style_sheet += "QSlider::groove:horizontal { border: 1px solid; height: 2px; border-radius: 1px; }"
-        style_sheet += "QSlider::handle:horizontal { background-color: " + handle + "; width: 8px; height: 8px; margin: -4px 4px; border: 1px solid " + border + "; border-radius: 4px; }"
-        style_sheet += "QSlider::add-page:horizontal { background-color: " + page_add + "; }" # Right Side
+        style_sheet += "QSlider::groove:horizontal { border: 1px solid; height: 2px; }"
+        style_sheet += "QSlider::handle:horizontal { background-color: " + handle + "; width: 10px; height: 10px; margin: -5px 2px; border: 1px solid " + border + "; border-radius: 5px; }"
         style_sheet += "QSlider::sub-page:horizontal { background-color: " + page_sub + "; }" # Left Side
+        style_sheet += "QSlider::add-page:horizontal { background-color: " + page_add + "; }" # Right Side
         widget.setStyleSheet( style_sheet )
 
     # Geometry
@@ -698,29 +909,55 @@ class Tela_Extension( Extension ):
             py = pos.y() - ph + 20
 
             # Geometry
-            self.Tela_Geometry( self.state_hide )
+            self.Tela_Geometry( self.state_hide_extra, self.state_hide_tela )
             self.Picker_Geometry( px7, py, pw, ph )
     # Tela Geometry
-    def Tela_Hide( self, boolean ):
-        self.state_hide = boolean
+    def Hide_Extra( self, boolean ):
+        hide_extra = boolean
+        self.Tela_Geometry( hide_extra, self.action_hide_tela.isChecked() )
+        self.Kritarc_Write( EXTENSION_NAME, "hide_extra", hide_extra )
+    def Hide_Tela_Button( self, boolean ):
+        self.action_hide_tela.blockSignals( True )
+        self.action_hide_tela.setChecked( boolean )
+        self.Hide_Tela( boolean )
+        self.action_hide_tela.blockSignals( False )
+    def Hide_Tela_Action( self, boolean ):
+        self.menu_tela.blockSignals( True )
+        self.menu_tela.setChecked( boolean )
+        self.Hide_Tela( boolean )
+        self.menu_tela.blockSignals( False )
+    def Hide_Tela( self, boolean ):
+        hide_extra = self.action_hide_extra.isChecked()
+        hide_tela = boolean
         if self.qmdiarea != None:
             limit = 20
-            curve = 2
-            if boolean == True:
+            curve = 1.5
+            if hide_tela == True:
                 for i in range( 0, limit+1, +1 ):
                     index = ( i / limit ) ** curve
-                    self.Tela_Geometry( index, True )
+                    self.Tela_Geometry( hide_extra, index, True )
                     self.color_picker.hide()
-            if boolean == False:
+            if hide_tela == False:
                 for i in range( limit, -1, -1 ):
                     index = ( i / limit ) ** curve
-                    self.Tela_Geometry( index, True )
-    def Tela_Geometry( self, hide, process=False ):
+                    self.Tela_Geometry( hide_extra, index, True )
+        self.Kritarc_Write( EXTENSION_NAME, "hide_tela", hide_tela )
+    def Tela_Geometry( self, hide_extra, hide_tela, process=False ):
+        # Size Update
+        self.state_hide_extra = hide_extra
+        self.state_hide_tela = hide_tela
+
+        # Geormetry
         if self.qmdiarea != None:
+            # Canvas
             qmd_w = self.qmdiarea.width()
             qmd_h = self.qmdiarea.height()
 
             # Variables
+            l0 = 85
+            l1 = 50
+            l2 = 45
+            l3 = 20
             short = 20
             wide = 50
             sep = 5
@@ -728,28 +965,31 @@ class Tela_Extension( Extension ):
             w4 = ( self.pba * 4 ) + ( sep * 3 )
             px7 = qmd_w * 0.5 - w7 * 0.5
             px4 = qmd_w * 0.5 - w4 * 0.5
-            delta = int( hide * 100 )
+            offscreen = 100
+            dh = int( hide_tela * offscreen )
+            if hide_extra == True:  de = l2
+            else:                   de = dh
 
             # Tool Box
-            self.menu_vector.setGeometry(       int( px7 + self.pba*0 + sep*0 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + sep*1 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + sep*2 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_color.setGeometry(        int( px7 + self.pba*3 + sep*3 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + sep*4 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_select.setGeometry(       int( px7 + self.pba*5 + sep*5 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + sep*6 ), int( qmd_h-85+delta ), int( self.pba ), int( self.pba ) )
+            self.menu_vector.setGeometry(       int( px7 + self.pba*0 + sep*0 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + sep*1 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + sep*2 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_color.setGeometry(        int( px7 + self.pba*3 + sep*3 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + sep*4 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_select.setGeometry(       int( px7 + self.pba*5 + sep*5 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
+            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + sep*6 ),    int( qmd_h-l0+dh ), int( self.pba ),    int( self.pba ) )
             # Progress Bar
-            self.progress_bar.setGeometry(      int( px7 ), int( qmd_h-50+delta ), int( w7 ), int( sep ) )
+            self.progress_bar.setGeometry(      int( px7 ),                         int( qmd_h-l1+dh ), int( w7 ),          int( sep ) )
             # Actions
-            self.menu_action.setGeometry(       int( px7 + self.pba*0 + sep*0 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_view.setGeometry(         int( px7 + self.pba*1 + sep*1 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_1.setGeometry(            int( px7 + self.pba*2 + sep*2 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_2.setGeometry(            int( px7 + self.pba*3 + sep*3 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_3.setGeometry(            int( px7 + self.pba*4 + sep*4 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*5 + sep*5 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
-            self.menu_color_picker.setGeometry( int( px7 + self.pba*6 + sep*6 ), int( qmd_h-45+delta ), int( self.pba ), int( self.pba ) )
+            self.menu_action.setGeometry(       int( px7 + self.pba*0 + sep*0 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_view.setGeometry(         int( px7 + self.pba*1 + sep*1 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_1.setGeometry(            int( px7 + self.pba*2 + sep*2 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_2.setGeometry(            int( px7 + self.pba*3 + sep*3 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_3.setGeometry(            int( px7 + self.pba*4 + sep*4 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*5 + sep*5 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
+            self.menu_color_picker.setGeometry( int( px7 + self.pba*6 + sep*6 ),    int( qmd_h-l2+de ), int( self.pba ),    int( self.pba ) )
             # Hide
-            self.tela_hide.setGeometry(         int( qmd_w*0.5-wide*0.5 ), int( qmd_h-20 ), int( wide ), int( self.pba ) )
+            self.menu_tela.setGeometry(         int( qmd_w*0.5-wide*0.5 ),          int( qmd_h-l3 ),    int( wide ),        int( self.pba ) )
 
             # Animation Permission
             if process: QApplication.processEvents()
@@ -825,29 +1065,37 @@ class Tela_Extension( Extension ):
     # Release
     def Release_Vector( self ):
         self.Menu_Reset()
+        self.action_tool_vector.setChecked( True )
         Krita.instance().action( self.operation["vector"] ).trigger()
     def Release_Brush( self ):
         self.Menu_Reset()
+        self.action_tool_brush.setChecked( True )
         Krita.instance().action( self.operation["brush"] ).trigger()
     def Release_Transform( self ):
         self.Menu_Reset()
+        self.action_tool_transform.setChecked( True )
         Krita.instance().action( self.operation["transform"] ).trigger()
     def Release_Color( self ):
         self.Menu_Reset()
+        self.action_tool_color.setChecked( True )
         Krita.instance().action( self.operation["color"] ).trigger()
     def Release_Overlay( self ):
         self.Menu_Reset()
+        self.action_tool_overlay.setChecked( True )
         Krita.instance().action( self.operation["overlay"] ).trigger()
     def Release_Select( self ):
         self.Menu_Reset()
+        self.action_tool_select.setChecked( True )
         Krita.instance().action( self.operation["select"] ).trigger()
     def Release_Camera( self ):
         self.Menu_Reset()
+        self.action_tool_camera.setChecked( True )
         Krita.instance().action( self.operation["camera"] ).trigger()
     def Release_Action( self ):
         self.Menu_Reset()
     def Release_View( self ):
         self.Menu_Reset()
+
 
     # Menu
     def Menu_Timer_Start( self, function ):
@@ -860,6 +1108,14 @@ class Tela_Extension( Extension ):
         self.Menu_Timer_Stop()
         self.Menu_Clear()
         self.color_picker.hide()
+        # Actions
+        self.action_tool_vector.setChecked( False )
+        self.action_tool_brush.setChecked( False )
+        self.action_tool_transform.setChecked( False )
+        self.action_tool_color.setChecked( False )
+        self.action_tool_overlay.setChecked( False )
+        self.action_tool_select.setChecked( False )
+        self.action_tool_camera.setChecked( False )
     def Menu_Timer_Stop( self ):
         try:self.menu_hold.stop()
         except:pass
@@ -907,7 +1163,7 @@ class Tela_Extension( Extension ):
         self.qmenu = QMenu()
 
         # Actions
-        action_menu = []
+        action_menu = list()
         for k in key:
             string = self.tool[mode][k][0]
             qicon = self.tool[mode][k][2]
@@ -926,15 +1182,23 @@ class Tela_Extension( Extension ):
         if action in action_menu:
             # Variables
             index = action_menu.index( action )
-            k = key[index]
-            operation = self.tool[mode][k][1]
-            qicon = self.tool[mode][k][2]
+            tool = key[index]
+            operation = self.tool[mode][tool][1]
+            qicon = self.tool[mode][tool][2]
             # Tool
             ki.action( operation ).trigger()
             self.operation[mode] = operation
             # UI
             widget.setIcon( qicon )
             widget.setChecked( True )
+            # Index
+            if mode == "vector":    self.index_vector = tool
+            if mode == "brush":     self.index_brush = tool
+            if mode == "transform": self.index_transform = tool
+            if mode == "color":     self.index_color = tool
+            if mode == "overlay":   self.index_overlay = tool
+            if mode == "select":    self.index_select = tool
+            if mode == "camera":    self.index_camera = tool
 
         # Clean up
         self.Menu_Down()
@@ -1016,17 +1280,19 @@ class Tela_Extension( Extension ):
         action_layer_isolate.setCheckable( True )
         action_layer_isolate.setChecked( layer_isolate )
         # Canvas
-        action_canvas_mirror = self.qmenu.addAction( "Canvas Mirror" )
-        action_canvas_wrap = self.qmenu.addAction( "Canvas Wrap" )
+        menu_canvas = self.qmenu.addMenu( "Canvas" )
+        action_canvas_mirror = menu_canvas.addAction( "Mirror" )
+        action_canvas_wrap = menu_canvas.addAction( "Wrap" )
         action_canvas_mirror.setCheckable( True )
         action_canvas_wrap.setCheckable( True )
         action_canvas_mirror.setChecked( canvas_mirror )
         action_canvas_wrap.setChecked( canvas_wrap )
         # Guides
-        action_guides_ruler = self.qmenu.addAction( "Guides Ruler" )
-        action_guides_snap = self.qmenu.addAction( "Guides Snap" )
-        action_guides_show = self.qmenu.addAction( "Guides Show" )
-        action_guides_lock = self.qmenu.addAction( "Guides Lock" )
+        menu_guides = self.qmenu.addMenu( "Guides" )
+        action_guides_ruler = menu_guides.addAction( "Ruler" )
+        action_guides_snap = menu_guides.addAction( "Snap" )
+        action_guides_show = menu_guides.addAction( "Show" )
+        action_guides_lock = menu_guides.addAction( "Lock" )
         action_guides_ruler.setCheckable( True )
         action_guides_snap.setCheckable( True )
         action_guides_show.setCheckable( True )
@@ -1036,9 +1302,10 @@ class Tela_Extension( Extension ):
         action_guides_show.setChecked( guides_show )
         action_guides_lock.setChecked( guides_lock )
         # View
-        action_view_painting_assistant = self.qmenu.addAction( "View Painting Assistant" )
-        action_view_assitant_preview = self.qmenu.addAction( "View Assistant Preview" )
-        action_view_reference_image = self.qmenu.addAction( "View Reference Image" )
+        menu_view = self.qmenu.addMenu( "View" )
+        action_view_painting_assistant = menu_view.addAction( "Painting Assistant" )
+        action_view_assitant_preview = menu_view.addAction( "Assistant Preview" )
+        action_view_reference_image = menu_view.addAction( "Reference Image" )
         action_view_painting_assistant.setCheckable( True )
         action_view_assitant_preview.setCheckable( True )
         action_view_reference_image.setCheckable( True )
@@ -1049,7 +1316,7 @@ class Tela_Extension( Extension ):
         action_selection_overlay_mode = self.qmenu.addAction( "Selection Overlay Mode" )
 
         # Mapping
-        item = 12
+        item = 6
         size = 23  # 23 is the expected height of a self.qmenu item on windows at least
         height = size * item + self.my + self.pba + 5
         qpoint = widget.geometry().topLeft()
@@ -1343,20 +1610,18 @@ class Tela_Extension( Extension ):
 
     # Module
     def Import_Pigment_O( self ):
-        self.pigmento_check = True
         try:
             # Tela
-            widget = self.menu_color_picker
-            widget.setEnabled( False )
+            self.menu_color_picker.setEnabled( False )
             # Krita
             ki = Krita.instance()
-            dockers = ki.dockers()
-            for d in dockers:
-                if d.objectName() == self.pigmento_pyid:
+            docker_list = ki.dockers()
+            for docker in docker_list:
+                if docker.objectName() == self.pigmento_picker_pyid:
                     # Variables
-                    self.pigmento_module = d
+                    self.pigmento_picker = docker
                     # Styling
-                    widget.setEnabled( True )
+                    self.menu_color_picker.setEnabled( True )
                     self.menu_color_picker.setIcon( ki.icon( "krita_tool_ellipse" ) )
                     break
         except:
@@ -1426,25 +1691,23 @@ class Tela_Extension( Extension ):
 
     # Read and Write
     def Color_READ( self ):
-        if self.pigmento_module != None:
+        if self.pigmento_picker != None:
             # Read
-            self.cor = self.pigmento_module.API_Request_FG()
-            wheel_space = self.pigmento_module.API_Request_Wheel_Space()
+            self.cor = self.pigmento_picker.API_Request_FG()
+            wheel_space = self.pigmento_picker.API_Request_Wheel_Space()
 
             # Wheel Space
             if wheel_space != self.wheel_space:
                 # Variables
                 self.wheel_space = wheel_space
-                if self.pigmento_module != None:
-                    panel_path = self.directory_plugin.replace( "tela", "pigment_o\\PANEL")
-                    zip_path = os.path.join( panel_path, f"RGB_{ self.wheel_space }_4.zip" )
-
-                    # QPixmap List
-                    self.qpixmap_list = self.Read_Zip( zip_path, self.wheel_space )
-                    self.color_panel.Set_Background( self.qpixmap_list )
+                panel_path = self.directory_plugin.replace( "tela", "pigment_o\\PANEL")
+                zip_path = os.path.join( panel_path, f"SRGB_{ self.wheel_space }_S4.zip" )
+                # QPixmap List
+                self.qpixmap_list = self.Read_Zip( zip_path )
+                self.color_panel.Set_Gradient( self.qpixmap_list )
 
             # Variables
-            hex6 = self.cor["hex6_d"]
+            hex6 = self.cor["display"]
             if self.wheel_space == "HSV":
                 s1 = self.cor["hsv_1"]
                 s2 = self.cor["hsv_2"]
@@ -1469,15 +1732,13 @@ class Tela_Extension( Extension ):
             # Sliders
             self.Color_Sliders_READ( s1, s2, s3 )
     def Color_WRITE( self, wheel_space, s1, s2, s3, action=True ):
-        if self.pigmento_module != None:
+        # if self.pigmento_module != None:
+        if self.pigmento_picker != None:
             # Pigment.O
-            self.pigmento_module.API_Input_Kelvin( 6500 )
-            if action == False:
-                self.cor = self.pigmento_module.API_Input_Preview( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
-            if action == True:
-                self.cor = self.pigmento_module.API_Input_Apply( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
+            if action == False: self.cor = self.pigmento_picker.API_Input_Preview( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
+            if action == True:  self.cor = self.pigmento_picker.API_Input_Apply( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
             # Update
-            self.color_display.Set_Color( self.cor["hex6_d"] )
+            self.color_display.Set_Color( self.cor["display"] )
             self.color_panel.Set_Color( s1, s2, s3 )
 
     # Extras
@@ -1487,26 +1748,30 @@ class Tela_Extension( Extension ):
         self.color_picker.s1.blockSignals( boolean )
         self.color_picker.s2.blockSignals( boolean )
         self.color_picker.s3.blockSignals( boolean )
-    def Read_Zip( self, location, space ):
-        qpixmap_list = []
+    def Read_Zip( self, url ):
+        list_qpixmap = list()
         try:
-            if zipfile.is_zipfile( location ):
-                archive = zipfile.ZipFile( location, "r" )
-                for i in range( 0, self.hue+1 ):
-                    # Mode Sensitive
-                    name = f"{ space }_4_{ str( i ).zfill( 3 ) }.png"
-                    # Read File
-                    archive_open = archive.open( name )
-                    archive_read = archive_open.read()
+            if zipfile.is_zipfile( url ):
+                archive = zipfile.ZipFile( url, "r" )
+                name_list = archive.namelist()
+                name_list.sort()
+                for name in name_list:
+                    # Archive
+                    extract = archive.open( name )
+                    image_data = extract.read()
+                    # Buffer
+                    byte_array = QByteArray( image_data )
+                    buffer = QBuffer()
+                    buffer.setData( byte_array )
+                    buffer.open( QIODevice.OpenModeFlag.ReadOnly )
                     # Image
-                    image = QImage()
-                    image.loadFromData( archive_read )
-                    qpixmap = QPixmap().fromImage( image )
-                    qpixmap_list.append( qpixmap )
-        except:
-            try:QtCore.qDebug( f"Tela to Pigment.O | ERROR Zip failed" )
+                    reader = QImageReader( buffer )
+                    qpixmap = QPixmap().fromImageReader( reader )
+                    list_qpixmap.append( qpixmap )
+        except Exception as e:
+            try:QtCore.qDebug( f"TELA | ERROR request failed\n{ e }" )
             except:pass
-        return qpixmap_list
+        return list_qpixmap
 
     #endregion
     #region Notifier
@@ -1528,7 +1793,7 @@ class Tela_Extension( Extension ):
     def Window_Created( self ):
         # Window
         ki = Krita.instance()
-        self.window = Krita.instance().activeWindow()
+        self.window = ki.activeWindow()
 
         # Signals
         self.window.activeViewChanged.connect( self.View_Changed )
@@ -1539,67 +1804,18 @@ class Tela_Extension( Extension ):
         self.Toolbox_Display()
         self.Toolbox_Button()
         self.Toolbox_Filter_Install()
+        self.Toolbox_Load()
     def Window_IsBeingCreated( self ):
         pass
 
     # Window
     def View_Changed( self ):
         self.Menu_Reset()
-        self.Update_Tool()
+        self.Tool_Update()
         self.Theme_Changed()
     def Theme_Changed( self ):
-        # Read
-        palette = QApplication.palette()
-        base = palette.base().color()
-        # Theme Colors
-        # Window ( Dark )
-        w_alternate   = palette.alternateBase().color().name()
-        w_base        = base.name()
-        w_button      = palette.button().color().name()
-        w_dark        = palette.dark().color().name()
-        w_light       = palette.light().color().name()
-        w_mid         = palette.mid().color().name()
-        w_midlight    = palette.midlight().color().name()
-        w_shadow      = palette.shadow().color().name()
-        w_tool_tip    = palette.toolTipBase().color().name()
-        w_window      = palette.window().color().name()
-        # Text ( Bright )
-        t_bright      = palette.brightText().color().name()
-        t_button      = palette.buttonText().color().name()
-        t_highlighted = palette.highlightedText().color().name()
-        t_placeholder = palette.placeholderText().color().name()
-        t_text        = palette.text().color().name()
-        t_tool_tip    = palette.toolTipText().color().name()
-        t_window      = palette.windowText().color().name()
-        # Color
-        c_highlight   = palette.highlight().color().name()
-        c_link        = palette.link().color().name()
-        c_visited     = palette.linkVisited().color().name()
-        # c_accent      = palette.accent().color().name() # qt6
-        a_black       = "#00000000"
-
-        # QPushbuttons
-        self.Interface_Highlight( self.menu_vector,       "menu_vector",    c_highlight )
-        self.Interface_Highlight( self.menu_brush,        "menu_brush",     c_highlight )
-        self.Interface_Highlight( self.menu_transform,    "menu_transform", c_highlight )
-        self.Interface_Highlight( self.menu_color,        "menu_color",     c_highlight )
-        self.Interface_Highlight( self.menu_overlay,      "menu_overlay",   c_highlight )
-        self.Interface_Highlight( self.menu_select,       "menu_select",    c_highlight )
-        self.Interface_Highlight( self.menu_camera,       "menu_camera",    c_highlight )
-        # Progress Bar
-        progress_bar_style_sheet = self.ProgressBar_StyleSheet( c_highlight, a_black )
-        self.progress_bar.setStyleSheet( progress_bar_style_sheet )
-        # Other Buttons
-        self.Interface_Highlight( self.menu_action,       "menu_action",    c_highlight )
-        self.Interface_Highlight( self.menu_view,         "menu_view",      c_highlight )
-        self.Interface_Highlight( self.menu_mirror_fix,   "mirror_fix",     c_highlight )
-        self.Interface_Highlight( self.menu_color_picker, "color_picker",   c_highlight )
-
-        # Color_Picker
-        self.Interface_Slider( self.color_picker.s1, c_visited, w_mid, w_mid, w_midlight )
-        self.Interface_Slider( self.color_picker.s2, c_visited, w_mid, w_mid, w_midlight )
-        self.Interface_Slider( self.color_picker.s3, c_visited, w_mid, w_mid, w_midlight )
-
+        self.Style_Theme()
+        self.Style_Icon()
     def Window_Closed( self ):
         pass
 
@@ -1611,16 +1827,13 @@ class Tela_Extension( Extension ):
         if self.qmdiarea != None:
             if ( event.type() == QEvent.Resize and source == self.qmdiarea ):
                 self.Size_Update()
-
         # Krita ToolBox Signals
         if ( event.type() in [ 2 , 39, 12 ] and source in self.krita_toolbox ):
-            self.Update_Tool()
-
+            self.Tool_Update()
         # Color Picker
         if ( event.type() == QEvent.Enter and source is self.color_picker ):
             self.Color_READ()
             return True
-
         return super().eventFilter( source, event )
 
     #endregion
@@ -1631,26 +1844,61 @@ class Tela_Extension( Extension ):
         menu_tela = QtWidgets.QMenu( "tela_menu", window.qwindow() )
         action_tela = window.createAction( "tela_menu", "Tela", "tools/scripts" )
         action_tela.setMenu( menu_tela )
-        # Sub Menus
+        # Tool Menu
+        menu_toolbox = QtWidgets.QMenu( "toolbox_menu", window.qwindow() )
+        action_toolbox = window.createAction( "toolbox_menu", "Toolbox", "tools/scripts/tela_menu" )
+        action_toolbox.setMenu( menu_toolbox )
+        # Mirror Fix Menu
         menu_mirror_fix = QtWidgets.QMenu( "mirror_fix_menu", window.qwindow() )
         action_mirror_fix = window.createAction( "mirror_fix_menu", "Mirror Fix", "tools/scripts/tela_menu" )
         action_mirror_fix.setMenu( menu_mirror_fix )
 
+        # Toolbox
+        self.action_tool_vector      = window.createAction( "tela_extension_tool_vector",    "Tool1 Vector",      "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_brush       = window.createAction( "tela_extension_tool_brush",     "Tool2 Brush",       "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_transform   = window.createAction( "tela_extension_tool_transform", "Tool3 Transform",   "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_color       = window.createAction( "tela_extension_tool_color",     "Tool4 Color",       "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_overlay     = window.createAction( "tela_extension_tool_overlay",   "Tool5 Overlay",     "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_select      = window.createAction( "tela_extension_tool_select",    "Tool6 Select",      "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_camera      = window.createAction( "tela_extension_tool_camera",    "Tool7 Camera",      "tools/scripts/tela_menu/toolbox_menu" )
+        self.action_tool_vector.setCheckable( True )
+        self.action_tool_brush.setCheckable( True )
+        self.action_tool_transform.setCheckable( True )
+        self.action_tool_color.setCheckable( True )
+        self.action_tool_overlay.setCheckable( True )
+        self.action_tool_select.setCheckable( True )
+        self.action_tool_camera.setCheckable( True )
+        self.action_tool_vector.triggered.connect( self.Release_Vector )
+        self.action_tool_brush.triggered.connect( self.Release_Brush )
+        self.action_tool_transform.triggered.connect( self.Release_Transform )
+        self.action_tool_color.triggered.connect( self.Release_Color )
+        self.action_tool_overlay.triggered.connect( self.Release_Overlay )
+        self.action_tool_select.triggered.connect( self.Release_Select )
+        self.action_tool_camera.triggered.connect( self.Release_Camera )
+
         # Actions Mirror Fix
-        action_mirror_fix_left  = window.createAction( "tela_extension_mirror_fix_left",  "Mirror Fix - LEFT",  "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_right = window.createAction( "tela_extension_mirror_fix_right", "Mirror Fix - RIGHT", "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_top   = window.createAction( "tela_extension_mirror_fix_top",   "Mirror Fix - TOP",   "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_down  = window.createAction( "tela_extension_mirror_fix_down",  "Mirror Fix - DOWN",  "tools/scripts/tela_menu/mirror_fix_menu" )
+        action_mirror_fix_left  = window.createAction( "tela_extension_mirror_fix_left",  "Mirror Fix [LEFT]",  "tools/scripts/tela_menu/mirror_fix_menu" )
+        action_mirror_fix_right = window.createAction( "tela_extension_mirror_fix_right", "Mirror Fix [RIGHT]", "tools/scripts/tela_menu/mirror_fix_menu" )
+        action_mirror_fix_top   = window.createAction( "tela_extension_mirror_fix_top",   "Mirror Fix [TOP]",   "tools/scripts/tela_menu/mirror_fix_menu" )
+        action_mirror_fix_down  = window.createAction( "tela_extension_mirror_fix_down",  "Mirror Fix [DOWN]",  "tools/scripts/tela_menu/mirror_fix_menu" )
         action_mirror_fix_left.triggered.connect(  lambda: self.MirrorFix_Side( "LEFT" ) )
         action_mirror_fix_right.triggered.connect( lambda: self.MirrorFix_Side( "RIGHT" ) )
         action_mirror_fix_top.triggered.connect(   lambda: self.MirrorFix_Side( "TOP" ) )
         action_mirror_fix_down.triggered.connect(  lambda: self.MirrorFix_Side( "DOWN" ) )
+
         # Actions Picker
         action_picker_to_cursor = window.createAction( "tela_extension_picker_to_cursor", "Picker to Cursor", "tools/scripts/tela_menu" )
         action_picker_to_cursor.triggered.connect( self.Picker_to_Cursor )
-        # Actions Hide
-        action_tela_hide = window.createAction( "tela_extension_hide", "Tela Hide", "tools/scripts/tela_menu" )
-        action_tela_hide.triggered.connect( lambda : self.tela_hide.setChecked( not self.state_hide ) )
+
+        # Actions Hide Extra
+        self.action_hide_extra = window.createAction( "tela_extension_hide_extra", "Hide Extras", "tools/scripts/tela_menu" )
+        self.action_hide_extra.setCheckable( True )
+        self.action_hide_extra.toggled.connect( self.Hide_Extra )
+
+        # Action Hide Tela
+        self.action_hide_tela = window.createAction( "tela_extension_hide_tela", "Hide Tela", "tools/scripts/tela_menu" )
+        self.action_hide_tela.setCheckable( True )
+        self.action_hide_tela.toggled.connect( self.Hide_Tela_Action )
 
     #endregion
     #region Notes
@@ -1677,6 +1925,25 @@ class Tela_Extension( Extension ):
     """
     QTimer.singleShot( 0, lambda: self.MirrorFix_Invert( ki, ad, side, new_node ) )
     """
+
+    """
+    # Docker
+    pyid = "ToolBox"
+    dockers = Krita.instance().dockers()
+    for d in dockers:
+        if d.objectName() == pyid:
+            tool_box = d
+            break
+    # Krita Tool Box
+    key_mg = self.tool.keys()
+    for mg in key_mg:
+        key_sg = self.tool[mg].keys()
+        for sg in key_sg:
+            item = self.tool[mg][sg][1]
+            child = tool_box.findChild( QToolButton, item )
+            self.krita_toolbox.append( child )
+            child.installEventFilter( self )
+    """
     #endregion
 
 """
@@ -1684,4 +1951,6 @@ New:
 - Animated toolBox for Hide/Show
 - Ui File destroyed, now widgets are code based
 - Auto updates when Krita changes tool
+- Hides Extras
+- Keeps memory of hide
 """

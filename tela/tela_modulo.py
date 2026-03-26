@@ -134,7 +134,7 @@ class Color_Display( QWidget ):
         painter.setRenderHint( QtGui.QPainter.Antialiasing, True )
         painter.setPen( QtCore.Qt.NoPen )
         painter.setBrush( QBrush( self.hex6 ) )
-        painter.drawRect( int( 0 ), int( 0 ), int( self.ww ), int( self.hh ) )
+        painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
 
 class Color_Panel( QWidget ):
     SIGNAL_PREVIEW = QtCore.pyqtSignal( list )
@@ -164,7 +164,7 @@ class Color_Panel( QWidget ):
         self.s2 = 0
         self.s3 = 0
         # Pixmaps
-        self.qpixmap_list = []
+        self.qpixmap_list = list()
         self.qpixmap_neutral = QPixmap()
         # Colors
         self.hue_circle = False
@@ -195,7 +195,7 @@ class Color_Panel( QWidget ):
         self.ey = int( self.s3 * self.hh )
         # Update
         self.update()
-    def Set_Background( self, qpixmap_list ):
+    def Set_Gradient( self, qpixmap_list ):
         self.qpixmap_list = qpixmap_list
         self.update()
 
@@ -295,17 +295,15 @@ class Color_Panel( QWidget ):
             painter.setBrush( QtCore.Qt.NoBrush )
             qpixmap = self.qpixmap_list[hue_index]
             if qpixmap.isNull() == False:
-                render = qpixmap.scaled( self.ww, self.hh, Qt.IgnoreAspectRatio, Qt.FastTransformation )
-            else:
-                render = qpixmap
-            painter.drawPixmap( int( 0 ), int( 0 ), render )
+                render = qpixmap.scaled( self.ww, self.hh, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.FastTransformation )
+                painter.drawPixmap( 0, 0, render )
 
         # Draw Colors
         if self.hue_circle == True:
             # Background
             painter.setPen( QtCore.Qt.NoPen )
             painter.setBrush( QBrush( self.color_alpha ) )
-            painter.drawRect( int( 0 ), int( 0 ), int( self.ww ), int( self.hh ) )
+            painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
 
             # Variables
             line_width = 4
@@ -348,7 +346,7 @@ class Color_Panel( QWidget ):
             hue.setColorAt( 1.000, QColor( int( self.colors[0][0] * d ), int( self.colors[0][1] * d ), int( self.colors[0][2] * d ) ) ) # RED
             painter.setBrush( QBrush( hue ) )
             painter.setClipPath( circle_01 )
-            painter.drawRect( int( 0 ), int( 0 ), int( self.ww ), int( self.hh ) )
+            painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
             # Dark Line over Hue
             painter.setPen( QPen( self.color_theme, line_width, Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin ) )
             painter.setBrush( QtCore.Qt.NoBrush )

@@ -3,9 +3,96 @@
     <Actions category="Scripts">
         <text>Tela</text>
 
+        <!-- ToolBox -->
+        <Action name="tela_extension_tool_vector">
+          <icon></icon>
+          <text>Tool Vector</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_brush">
+          <icon></icon>
+          <text>Tool Brush</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_transform">
+          <icon></icon>
+          <text>Tool Transform</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_color">
+          <icon></icon>
+          <text>Tool Color</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_overlay">
+          <icon></icon>
+          <text>Tool Overlay</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_select">
+          <icon></icon>
+          <text>Tool Select</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_tool_camera">
+          <icon></icon>
+          <text>Tool Camera</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+
+        <!-- Mirror Fix -->
         <Action name="tela_extension_mirror_fix_left">
           <icon></icon>
-          <text>Mirror Fix - LEFT</text>
+          <text>Mirror Fix [LEFT]</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -17,7 +104,7 @@
         </Action>
         <Action name="tela_extension_mirror_fix_right">
           <icon></icon>
-          <text>Mirror Fix - RIGHT</text>
+          <text>Mirror Fix [RIGHT]</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -29,7 +116,7 @@
         </Action>
         <Action name="tela_extension_mirror_fix_top">
           <icon></icon>
-          <text>Mirror Fix - TOP</text>
+          <text>Mirror Fix [TOP]</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -41,7 +128,7 @@
         </Action>
         <Action name="tela_extension_mirror_fix_down">
           <icon></icon>
-          <text>Mirror Fix - DOWN</text>
+          <text>Mirror Fix [DOWN]</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -52,7 +139,7 @@
           <statusTip></statusTip>
         </Action>
 
-
+        <!-- Color Picker -->
         <Action name="tela_extension_picker_to_cursor">
           <icon></icon>
           <text>Picker to Cursor</text>
@@ -66,10 +153,22 @@
           <statusTip></statusTip>
         </Action>
 
-
-        <Action name="tela_extension_hide">
+        <!-- Tela Widgets -->
+        <Action name="tela_extension_hide_extra">
           <icon></icon>
-          <text>Tela Hide</text>
+          <text>Hide Extras</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+        <Action name="tela_extension_hide_tela">
+          <icon></icon>
+          <text>Hide Tela</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>

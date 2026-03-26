@@ -21,7 +21,7 @@ from .tela_extension import *
 
 
 # Information
-__version__ = ' 1.0.0 '
+__version__ = ' qt=5 krita=5.2.16 date=2026_03_26 '
 __license__ = ' GPLv3+ LGPLv3+ '
 __author__ = ' Ricardo Jeremias '
 __email__ = ' jeremy6321478@gmail.com '
