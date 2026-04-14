@@ -72,48 +72,49 @@ class Tela_Extension( Extension ):
         # Variables
         ki = Krita.instance()
         # Vector
-        icon_select_tool = ki.icon( "select" )
-        icon_text_tool = ki.icon( "draw-text" )
-        icon_edit_tool = ki.icon( "shape_handling" )
-        icon_calligraphy_tool = ki.icon( "calligraphy" )
+        icon_select_tool        = ki.icon( "select" )
+        icon_text_tool          = ki.icon( "draw-text" )
+        icon_edit_tool          = ki.icon( "shape_handling" )
+        icon_calligraphy_tool   = ki.icon( "calligraphy" )
+        icon_comic_tool         = ki.icon( "tool_comic_panel" )
         # Brush
-        icon_freehand_brush = ki.icon( "krita_tool_freehand" )
-        icon_line_brush = ki.icon( "krita_tool_line" )
-        icon_rectangle_brush = ki.icon( "krita_tool_rectangle" )
-        icon_ellipse_brush = ki.icon( "krita_tool_ellipse" )
-        icon_polygon_brush = ki.icon( "krita_tool_polygon" )
-        icon_polyline_brush = ki.icon( "polyline" )
-        icon_bezier_brush = ki.icon( "krita_draw_path" )
-        icon_path_brush = ki.icon( "krita_tool_freehandvector" )
-        icon_dynamic_brush = ki.icon( "krita_tool_dyna" )
-        icon_multi_brush = ki.icon( "krita_tool_multihand" )
+        icon_freehand_brush     = ki.icon( "krita_tool_freehand" )
+        icon_line_brush         = ki.icon( "krita_tool_line" )
+        icon_rectangle_brush    = ki.icon( "krita_tool_rectangle" )
+        icon_ellipse_brush      = ki.icon( "krita_tool_ellipse" )
+        icon_polygon_brush      = ki.icon( "krita_tool_polygon" )
+        icon_polyline_brush     = ki.icon( "polyline" )
+        icon_bezier_brush       = ki.icon( "krita_draw_path" )
+        icon_path_brush         = ki.icon( "krita_tool_freehandvector" )
+        icon_dynamic_brush      = ki.icon( "krita_tool_dyna" )
+        icon_multi_brush        = ki.icon( "krita_tool_multihand" )
         # Transform
-        icon_transform_tool = ki.icon( "krita_tool_transform" )
-        icon_move_tool = ki.icon( "krita_tool_move" )
-        icon_crop_tool = ki.icon( "tool_crop" )
+        icon_transform_tool     = ki.icon( "krita_tool_transform" )
+        icon_move_tool          = ki.icon( "krita_tool_move" )
+        icon_crop_tool          = ki.icon( "tool_crop" )
         # Color
-        icon_gradient_tool = ki.icon( "krita_tool_gradient" )
-        icon_sampler_tool = ki.icon( "krita_tool_color_sampler" )
-        icon_colorize_tool = ki.icon( "krita_tool_lazybrush" )
-        icon_patch_tool = ki.icon( "krita_tool_smart_patch" )
-        icon_fill_tool = ki.icon( "krita_tool_color_fill" )
-        icon_enclose_tool = ki.icon( "krita_tool_enclose_and_fill" )
+        icon_gradient_tool      = ki.icon( "krita_tool_gradient" )
+        icon_sampler_tool       = ki.icon( "krita_tool_color_sampler" )
+        icon_colorize_tool      = ki.icon( "krita_tool_lazybrush" )
+        icon_patch_tool         = ki.icon( "krita_tool_smart_patch" )
+        icon_fill_tool          = ki.icon( "krita_tool_color_fill" )
+        icon_enclose_tool       = ki.icon( "krita_tool_enclose_and_fill" )
         # Overlay
-        icon_assistant_tool = ki.icon( "krita_tool_assistant" )
-        icon_measure_tool = ki.icon( "krita_tool_measure" )
-        icon_reference_tool = ki.icon( "krita_tool_reference_images" )
+        icon_assistant_tool     = ki.icon( "krita_tool_assistant" )
+        icon_measure_tool       = ki.icon( "krita_tool_measure" )
+        icon_reference_tool     = ki.icon( "krita_tool_reference_images" )
         # Select
-        icon_rectangle_select = ki.icon( "tool_rect_selection" )
-        icon_elliptical_select = ki.icon( "tool_elliptical_selection" )
-        icon_polygon_select = ki.icon( "tool_polygonal_selection" )
-        icon_freehand_select = ki.icon( "tool_outline_selection")
-        icon_contiguous_select = ki.icon( "tool_contiguous_selection" )
-        icon_color_select = ki.icon( "tool_similar_selection")
-        icon_bezier_select = ki.icon( "tool_path_selection")
-        icon_magnetic_select = ki.icon( "tool_magnetic_selection" )
+        icon_rectangle_select   = ki.icon( "tool_rect_selection" )
+        icon_elliptical_select  = ki.icon( "tool_elliptical_selection" )
+        icon_polygon_select     = ki.icon( "tool_polygonal_selection" )
+        icon_freehand_select    = ki.icon( "tool_outline_selection")
+        icon_contiguous_select  = ki.icon( "tool_contiguous_selection" )
+        icon_color_select       = ki.icon( "tool_similar_selection")
+        icon_bezier_select      = ki.icon( "tool_path_selection")
+        icon_magnetic_select    = ki.icon( "tool_magnetic_selection" )
         # Camera
-        icon_zoom_tool = ki.icon( "tool_zoom" )
-        icon_pan_tool = ki.icon( "tool_pan" )
+        icon_zoom_tool          = ki.icon( "tool_zoom" )
+        icon_pan_tool           = ki.icon( "tool_pan" )
         # Mirror Fix
         self.icon_mirrorfix = "wraparound"
 
@@ -124,6 +125,7 @@ class Tela_Extension( Extension ):
                 "text_tool"          : [ "Text",        "SvgTextTool",                       icon_text_tool,          1 ],
                 "edit_tool"          : [ "Edit",        "PathTool",                          icon_edit_tool,          2 ],
                 "calligraphy_tool"   : [ "Calligraphy", "KarbonCalligraphyTool",             icon_calligraphy_tool,   3 ],
+                "comic_tool"         : [ "Comic",       "KritaShape/KisToolKnife",           icon_comic_tool,         4 ],
                 },
             "brush" : {
                 "freehand_brush"     : [ "Freehand",    "KritaShape/KisToolBrush",           icon_freehand_brush,     0 ],
@@ -289,16 +291,11 @@ class Tela_Extension( Extension ):
         except:pass
     # Math
     def Limit_Range( self, value, mini, maxi, minifix, maxifix ):
-        if value <= mini:
-            value = mini + minifix
-        if value >= maxi:
-            value = maxi + maxifix
+        if value <= mini:   value = mini + minifix
+        if value >= maxi:   value = maxi + maxifix
         return value
     # Canvas
     def Check_Canvas( self ):
-        # Replaces
-        # if ( ( self.canvas() is not None ) and ( self.canvas().view() is not None ) ):
-
         # Variables
         ki = Krita.instance()
         view = ki.activeWindow().activeView()
@@ -511,58 +508,62 @@ class Tela_Extension( Extension ):
     def Toolbox_Button( self ):
         qwindow = Krita.instance().activeWindow().qwindow()
         # Vector Checks
-        self.button_select_tool       = qwindow.findChild( QToolButton, self.tool["vector"]["select_tool"][1] )
-        self.button_text_tool         = qwindow.findChild( QToolButton, self.tool["vector"]["text_tool"][1] )
-        self.button_edit_tool         = qwindow.findChild( QToolButton, self.tool["vector"]["edit_tool"][1] )
-        self.button_calligraphy_tool  = qwindow.findChild( QToolButton, self.tool["vector"]["calligraphy_tool"][1] )
+        self.button_select_tool         = qwindow.findChild( QToolButton, self.tool["vector"]["select_tool"][1] )
+        self.button_text_tool           = qwindow.findChild( QToolButton, self.tool["vector"]["text_tool"][1] )
+        self.button_edit_tool           = qwindow.findChild( QToolButton, self.tool["vector"]["edit_tool"][1] )
+        self.button_calligraphy_tool    = qwindow.findChild( QToolButton, self.tool["vector"]["calligraphy_tool"][1] )
+        self.button_comic_tool          = qwindow.findChild( QToolButton, self.tool["vector"]["comic_tool"][1] )
         # Brush Checks
-        self.button_freehand_brush    = qwindow.findChild( QToolButton, self.tool["brush"]["freehand_brush"][1] )
-        self.button_line_brush        = qwindow.findChild( QToolButton, self.tool["brush"]["line_brush"][1] )
-        self.button_rectangle_brush   = qwindow.findChild( QToolButton, self.tool["brush"]["rectangle_brush"][1] )
-        self.button_ellipse_brush     = qwindow.findChild( QToolButton, self.tool["brush"]["ellipse_brush"][1] )
-        self.button_polygon_brush     = qwindow.findChild( QToolButton, self.tool["brush"]["polygon_brush"][1] )
-        self.button_polyline_brush    = qwindow.findChild( QToolButton, self.tool["brush"]["polyline_brush"][1] )
-        self.button_bezier_brush      = qwindow.findChild( QToolButton, self.tool["brush"]["bezier_brush"][1] )
-        self.button_path_brush        = qwindow.findChild( QToolButton, self.tool["brush"]["path_brush"][1] )
-        self.button_dynamic_brush     = qwindow.findChild( QToolButton, self.tool["brush"]["dynamic_brush"][1] )
-        self.button_multi_brush       = qwindow.findChild( QToolButton, self.tool["brush"]["multi_brush"][1] )
+        self.button_freehand_brush      = qwindow.findChild( QToolButton, self.tool["brush"]["freehand_brush"][1] )
+        self.button_line_brush          = qwindow.findChild( QToolButton, self.tool["brush"]["line_brush"][1] )
+        self.button_rectangle_brush     = qwindow.findChild( QToolButton, self.tool["brush"]["rectangle_brush"][1] )
+        self.button_ellipse_brush       = qwindow.findChild( QToolButton, self.tool["brush"]["ellipse_brush"][1] )
+        self.button_polygon_brush       = qwindow.findChild( QToolButton, self.tool["brush"]["polygon_brush"][1] )
+        self.button_polyline_brush      = qwindow.findChild( QToolButton, self.tool["brush"]["polyline_brush"][1] )
+        self.button_bezier_brush        = qwindow.findChild( QToolButton, self.tool["brush"]["bezier_brush"][1] )
+        self.button_path_brush          = qwindow.findChild( QToolButton, self.tool["brush"]["path_brush"][1] )
+        self.button_dynamic_brush       = qwindow.findChild( QToolButton, self.tool["brush"]["dynamic_brush"][1] )
+        self.button_multi_brush         = qwindow.findChild( QToolButton, self.tool["brush"]["multi_brush"][1] )
         # Transform Checks
-        self.button_transform_tool    = qwindow.findChild( QToolButton, self.tool["transform"]["transform_tool"][1] )
-        self.button_move_tool         = qwindow.findChild( QToolButton, self.tool["transform"]["move_tool"][1] )
-        self.button_crop_tool         = qwindow.findChild( QToolButton, self.tool["transform"]["crop_tool"][1] )
+        self.button_transform_tool      = qwindow.findChild( QToolButton, self.tool["transform"]["transform_tool"][1] )
+        self.button_move_tool           = qwindow.findChild( QToolButton, self.tool["transform"]["move_tool"][1] )
+        self.button_crop_tool           = qwindow.findChild( QToolButton, self.tool["transform"]["crop_tool"][1] )
         # Color Checks
-        self.button_gradient_tool     = qwindow.findChild( QToolButton, self.tool["color"]["gradient_tool"][1] )
-        self.button_sampler_tool      = qwindow.findChild( QToolButton, self.tool["color"]["sampler_tool"][1] )
-        self.button_colorize_tool     = qwindow.findChild( QToolButton, self.tool["color"]["colorize_tool"][1] )
-        self.button_patch_tool        = qwindow.findChild( QToolButton, self.tool["color"]["patch_tool"][1] )
-        self.button_fill_tool         = qwindow.findChild( QToolButton, self.tool["color"]["fill_tool"][1] )
-        self.button_enclose_tool      = qwindow.findChild( QToolButton, self.tool["color"]["enclose_tool"][1] )
+        self.button_gradient_tool       = qwindow.findChild( QToolButton, self.tool["color"]["gradient_tool"][1] )
+        self.button_sampler_tool        = qwindow.findChild( QToolButton, self.tool["color"]["sampler_tool"][1] )
+        self.button_colorize_tool       = qwindow.findChild( QToolButton, self.tool["color"]["colorize_tool"][1] )
+        self.button_patch_tool          = qwindow.findChild( QToolButton, self.tool["color"]["patch_tool"][1] )
+        self.button_fill_tool           = qwindow.findChild( QToolButton, self.tool["color"]["fill_tool"][1] )
+        self.button_enclose_tool        = qwindow.findChild( QToolButton, self.tool["color"]["enclose_tool"][1] )
         # Overlay Checks
-        self.button_assistant_tool    = qwindow.findChild( QToolButton, self.tool["overlay"]["assistant_tool"][1] )
-        self.button_measure_tool      = qwindow.findChild( QToolButton, self.tool["overlay"]["measure_tool"][1] )
-        self.button_reference_tool    = qwindow.findChild( QToolButton, self.tool["overlay"]["reference_tool"][1] )
+        self.button_assistant_tool      = qwindow.findChild( QToolButton, self.tool["overlay"]["assistant_tool"][1] )
+        self.button_measure_tool        = qwindow.findChild( QToolButton, self.tool["overlay"]["measure_tool"][1] )
+        self.button_reference_tool      = qwindow.findChild( QToolButton, self.tool["overlay"]["reference_tool"][1] )
         # Selection Checks
-        self.button_rectangle_select  = qwindow.findChild( QToolButton, self.tool["select"]["rectangle_select"][1] )
-        self.button_elliptical_select = qwindow.findChild( QToolButton, self.tool["select"]["elliptical_select"][1] )
-        self.button_polygon_select    = qwindow.findChild( QToolButton, self.tool["select"]["polygon_select"][1] )
-        self.button_freehand_select   = qwindow.findChild( QToolButton, self.tool["select"]["freehand_select"][1] )
-        self.button_contiguous_select = qwindow.findChild( QToolButton, self.tool["select"]["contiguous_select"][1] )
-        self.button_color_select      = qwindow.findChild( QToolButton, self.tool["select"]["color_select"][1] )
-        self.button_bezier_select     = qwindow.findChild( QToolButton, self.tool["select"]["bezier_select"][1] )
-        self.button_magnetic_select   = qwindow.findChild( QToolButton, self.tool["select"]["magnetic_select"][1] )
+        self.button_rectangle_select    = qwindow.findChild( QToolButton, self.tool["select"]["rectangle_select"][1] )
+        self.button_elliptical_select   = qwindow.findChild( QToolButton, self.tool["select"]["elliptical_select"][1] )
+        self.button_polygon_select      = qwindow.findChild( QToolButton, self.tool["select"]["polygon_select"][1] )
+        self.button_freehand_select     = qwindow.findChild( QToolButton, self.tool["select"]["freehand_select"][1] )
+        self.button_contiguous_select   = qwindow.findChild( QToolButton, self.tool["select"]["contiguous_select"][1] )
+        self.button_color_select        = qwindow.findChild( QToolButton, self.tool["select"]["color_select"][1] )
+        self.button_bezier_select       = qwindow.findChild( QToolButton, self.tool["select"]["bezier_select"][1] )
+        self.button_magnetic_select     = qwindow.findChild( QToolButton, self.tool["select"]["magnetic_select"][1] )
         # Camera Checks
-        self.button_zoom_tool         = qwindow.findChild( QToolButton, self.tool["camera"]["zoom_tool"][1] )
-        self.button_pan_tool          = qwindow.findChild( QToolButton, self.tool["camera"]["pan_tool"][1] )
+        self.button_zoom_tool           = qwindow.findChild( QToolButton, self.tool["camera"]["zoom_tool"][1] )
+        self.button_pan_tool            = qwindow.findChild( QToolButton, self.tool["camera"]["pan_tool"][1] )
     def Toolbox_Filter_Install( self ):
+        # Variables
         app = QApplication.instance()
         list_widget = app.allWidgets()
         list_key = list()
+        # Construct from toolbox
         key_a = self.tool.keys()
         for a in key_a:
             key_b = self.tool[a].keys()
             for b in key_b:
                 item = self.tool[a][b][1]
                 list_key.append( item )
+        # Cycle
         for widget in list_widget:
             name = widget.objectName()
             if name in list_key:
@@ -588,8 +589,10 @@ class Tela_Extension( Extension ):
         self.Tela_Geometry( hide_extra, hide_tela )
     # Tool
     def Tool_Update( self ):
+        # Canvas
         check_canvas = self.Check_Canvas()
         if check_canvas == True:
+
             # Vector Checks
             try:select_tool       = self.button_select_tool.isChecked()
             except:pass
@@ -598,6 +601,8 @@ class Tela_Extension( Extension ):
             try:edit_tool         = self.button_edit_tool.isChecked()
             except:pass
             try:calligraphy_tool  = self.button_calligraphy_tool.isChecked()
+            except:pass
+            try:comic_tool        = self.button_comic_tool.isChecked()
             except:pass
             # Brush Checks
             try:freehand_brush    = self.button_freehand_brush.isChecked()
@@ -675,6 +680,7 @@ class Tela_Extension( Extension ):
             elif text_tool         == True : self.Tool_Apply( "vector",    "text_tool",         self.menu_vector )
             elif edit_tool         == True : self.Tool_Apply( "vector",    "edit_tool",         self.menu_vector )
             elif calligraphy_tool  == True : self.Tool_Apply( "vector",    "calligraphy_tool",  self.menu_vector )
+            elif comic_tool        == True : self.Tool_Apply( "vector",    "comic_tool",        self.menu_vector )
             # Brush Checks
             elif freehand_brush    == True : self.Tool_Apply( "brush",     "freehand_brush",    self.menu_brush )
             elif line_brush        == True : self.Tool_Apply( "brush",     "line_brush",        self.menu_brush )
@@ -713,6 +719,7 @@ class Tela_Extension( Extension ):
             # Camera Checks
             elif zoom_tool         == True : self.Tool_Apply( "camera",    "zoom_tool",         self.menu_camera )
             elif pan_tool          == True : self.Tool_Apply( "camera",    "pan_tool",          self.menu_camera )
+            # Error
             else:self.Message_Float( "ERROR", "new tool present ?", "broken-preset" )
     def Tool_Apply( self, mode, tool, widget ):
         # Variables
@@ -1096,7 +1103,6 @@ class Tela_Extension( Extension ):
     def Release_View( self ):
         self.Menu_Reset()
 
-
     # Menu
     def Menu_Timer_Start( self, function ):
         self.menu_hold = QtCore.QTimer()
@@ -1320,7 +1326,6 @@ class Tela_Extension( Extension ):
         size = 23  # 23 is the expected height of a self.qmenu item on windows at least
         height = size * item + self.my + self.pba + 5
         qpoint = widget.geometry().topLeft()
-        # pos = self.layout.button_container.mapToGlobal( qpoint )
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
         action = self.qmenu.exec_( point )
@@ -1823,15 +1828,18 @@ class Tela_Extension( Extension ):
     #region Widget Events
 
     def eventFilter( self, source, event ):
+        # Variables
+        et = event.type()
+        transform_widgets = []
         # Geometry ( resize )
         if self.qmdiarea != None:
             if ( event.type() == QEvent.Resize and source == self.qmdiarea ):
                 self.Size_Update()
         # Krita ToolBox Signals
-        if ( event.type() in [ 2 , 39, 12 ] and source in self.krita_toolbox ):
+        if ( et in [ 2 , 39, 12 ] and source in self.krita_toolbox ):
             self.Tool_Update()
         # Color Picker
-        if ( event.type() == QEvent.Enter and source is self.color_picker ):
+        if ( et == QEvent.Enter and source is self.color_picker ):
             self.Color_READ()
             return True
         return super().eventFilter( source, event )
