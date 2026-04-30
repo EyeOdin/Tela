@@ -211,13 +211,15 @@ class Tela_Extension( Extension ):
         self.index_camera = "pan_tool"
 
         # State
-        self.state_show_option = False
-        self.state_show_extra = False
-        self.state_hide_tela = False
+        self.show_option = False
+        self.show_extra = False
+        self.hide_tela = False
 
         # Pushbutton Size
         self.pba = 35
-        self.pbb = 20
+        self.pbb = 28
+        self.pbc = 20
+        self.pbs = 5
         # Menu Margin
         self.mx = 10
         self.my = 10
@@ -488,7 +490,7 @@ class Tela_Extension( Extension ):
 
         # Display
         self.Interface_Create( self.qmdiarea )
-        self.Tela_Geometry( self.action_show_option.isChecked(), self.action_show_extra.isChecked(), self.action_hide_tela.isChecked() )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
         # Color Picker
         self.color_picker.setParent( self.qmdiarea )
         self.color_picker.hide()
@@ -565,9 +567,9 @@ class Tela_Extension( Extension ):
                 widget.installEventFilter( self )
     def Toolbox_Load( self ):
         # Kritarc
-        show_option = self.Kritarc_Read( EXTENSION_NAME, "show_option", self.state_show_option, eval )
-        show_extra  = self.Kritarc_Read( EXTENSION_NAME, "show_extra",  self.state_show_extra,  eval )
-        hide_tela   = self.Kritarc_Read( EXTENSION_NAME, "hide_tela",   self.state_hide_tela,   eval )
+        show_option = self.Kritarc_Read( EXTENSION_NAME, "show_option", self.show_option, eval )
+        show_extra  = self.Kritarc_Read( EXTENSION_NAME, "show_extra",  self.show_extra,  eval )
+        hide_tela   = self.Kritarc_Read( EXTENSION_NAME, "hide_tela",   self.hide_tela,   eval )
         # Tela Button
         self.menu_tela.blockSignals( True )
         self.menu_tela.setChecked( hide_tela )
@@ -708,7 +710,7 @@ class Tela_Extension( Extension ):
             # Error
             else:self.Message_Float( "ERROR", "new tool present ?", "broken-preset" )
             # Clean
-            self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+            self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Tool_Apply( self, mode, tool, widget ):
         # Variables
         operation = self.tool[mode][tool][1]
@@ -731,12 +733,10 @@ class Tela_Extension( Extension ):
         #region Widgets
 
         # Variables
-        sep = 5
-        bar = ( self.pba * 7 ) + ( sep * 6 )
+        bar = ( self.pba * 7 ) + ( self.pbs * 6 )
 
-        # Krita Menu
-        self.menu_krita        = QPushButton( "menu_krita", parent )
         # Tool Box
+        self.menu_krita        = QPushButton( "menu_krita", parent )
         self.menu_vector       = QPushButton( "menu_vector", parent )
         self.menu_brush        = QPushButton( "menu_brush", parent )
         self.menu_transform    = QPushButton( "menu_transform", parent )
@@ -744,6 +744,12 @@ class Tela_Extension( Extension ):
         self.menu_overlay      = QPushButton( "menu_overlay", parent )
         self.menu_select       = QPushButton( "menu_select", parent )
         self.menu_camera       = QPushButton( "menu_camera", parent )
+        self.menu_break        = QPushButton( "menu_break", parent )
+        # Progress Bar
+        self.progress_bar      = QProgressBar( parent )
+        # Extras
+        self.menu_mirror_fix   = QPushButton( "menu_mirror_fix", parent )
+        self.menu_color_picker = QPushButton( "menu_color_picker", parent )
         # Transform
         self.spt_free          = QPushButton( "spt_free", parent )
         self.spt_perspective   = QPushButton( "spt_perspective", parent )
@@ -755,22 +761,11 @@ class Tela_Extension( Extension ):
         self.sps_invert        = QPushButton( "sps_invert", parent )
         self.sps_all           = QPushButton( "sps_all", parent )
         self.sps_none          = QPushButton( "sps_none", parent )
-        # Progress Bar
-        self.progress_bar      = QProgressBar( parent )
-        # Actions
-        self.menu_1            = QPushButton( "menu_1", parent )
-        self.menu_2            = QPushButton( "menu_2", parent )
-        self.menu_3            = QPushButton( "menu_3", parent )
-        self.menu_4            = QPushButton( "menu_4", parent )
-        self.menu_5            = QPushButton( "menu_5", parent )
-        self.menu_mirror_fix   = QPushButton( "menu_mirror_fix", parent )
-        self.menu_color_picker = QPushButton( "menu_color_picker", parent )
         # Hide
         self.menu_tela         = QPushButton( "hide", parent )
 
-        # Krita Menu
-        self.Interface_Push_Button(  self.menu_krita,        "menu_krita",        self.pbb, self.pba, False, False, False )
         # Tool Box
+        self.Interface_Push_Button(  self.menu_krita,        "menu_krita",        self.pbc, self.pba, False, False, False )
         self.Interface_Push_Button(  self.menu_vector,       "menu_vector",       self.pba, self.pba, True,  True,  False )
         self.Interface_Push_Button(  self.menu_brush,        "menu_brush",        self.pba, self.pba, True,  True,  False )
         self.Interface_Push_Button(  self.menu_transform,    "menu_transform",    self.pba, self.pba, True,  True,  False )
@@ -778,29 +773,25 @@ class Tela_Extension( Extension ):
         self.Interface_Push_Button(  self.menu_overlay,      "menu_overlay",      self.pba, self.pba, True,  True,  False )
         self.Interface_Push_Button(  self.menu_select,       "menu_select",       self.pba, self.pba, True,  True,  False )
         self.Interface_Push_Button(  self.menu_camera,       "menu_camera",       self.pba, self.pba, True,  True,  False )
-        # Transform
-        self.Interface_Push_Button(  self.spt_free,          "spt_free",          self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.spt_perspective,   "spt_perspective",   self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.spt_warp,          "spt_warp",          self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.spt_cage,          "spt_cage",          self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.spt_liquify,       "spt_liquify",       self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.spt_mesh,          "spt_mesh",          self.pba, self.pba, False, False, False )
-        # Select
-        self.Interface_Push_Button(  self.sps_invert,        "sps_invert",        self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.sps_all,           "sps_all",           self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.sps_none,          "sps_none",          self.pba, self.pba, False, False, False )
+        self.Interface_Push_Button(  self.menu_break,        "menu_break",        self.pbc, self.pba, False, False, False )
         # Progress Bar
-        self.Interface_Progress_Bar( self.progress_bar,      "progress_bar",      bar,      sep )
-        # Actions
-        self.Interface_Push_Button(  self.menu_1,            "menu_1",            self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_2,            "menu_2",            self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_3,            "menu_3",            self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_4,            "menu_4",            self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_5,            "menu_5",            self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_mirror_fix,   "menu_mirror_fix",   self.pba, self.pbb, False, False, False )
-        self.Interface_Push_Button(  self.menu_color_picker, "menu_color_picker", self.pba, self.pbb, False, False, False )
+        self.Interface_Progress_Bar( self.progress_bar,      "progress_bar",      bar,      self.pbs )
+        # Extras
+        self.Interface_Push_Button(  self.menu_mirror_fix,   "menu_mirror_fix",   self.pba, self.pba, False, False, False )
+        self.Interface_Push_Button(  self.menu_color_picker, "menu_color_picker", self.pba, self.pba, False, False, False )
+        # Transform
+        self.Interface_Push_Button(  self.spt_free,          "spt_free",          self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.spt_perspective,   "spt_perspective",   self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.spt_warp,          "spt_warp",          self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.spt_cage,          "spt_cage",          self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.spt_liquify,       "spt_liquify",       self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.spt_mesh,          "spt_mesh",          self.pba, self.pbb, False, False, False )
+        # Select
+        self.Interface_Push_Button(  self.sps_invert,        "sps_invert",        self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.sps_all,           "sps_all",           self.pba, self.pbb, False, False, False )
+        self.Interface_Push_Button(  self.sps_none,          "sps_none",          self.pba, self.pbb, False, False, False )
         # Hide
-        self.Interface_Push_Button(  self.menu_tela,         "menu_tela",         50,       self.pbb, True,  False, True  )
+        self.Interface_Push_Button(  self.menu_tela,         "menu_tela",         50,       self.pbc, True,  False, True  )
 
         #endregion
         #region Connections
@@ -829,6 +820,9 @@ class Tela_Extension( Extension ):
         # Camera
         self.menu_camera.pressed.connect( self.Hold_Camera )
         self.menu_camera.released.connect( self.Release_Camera )
+        # Break
+        self.menu_break.pressed.connect( self.Hold_Break )
+        self.menu_break.released.connect( self.Release_Break )
         # Transform
         self.spt_free.clicked.connect( self.Transform_Free )
         self.spt_perspective.clicked.connect( self.Transform_Perspective )
@@ -849,7 +843,7 @@ class Tela_Extension( Extension ):
         self.color_picker.s3.valueChanged.connect(   lambda: self.CS3_W( False ) )
         self.color_picker.s3.sliderReleased.connect( lambda: self.CS3_W( True ) )
         # Hide
-        self.menu_tela.toggled.connect( self.Hide_Tela_Button )
+        self.menu_tela.toggled.connect( self.Hide_Tela )
 
         # User Interface Update
         self.color_picker.installEventFilter( self )
@@ -866,9 +860,8 @@ class Tela_Extension( Extension ):
 
         # Krita Instance
         ki = Krita.instance()
-        # Menu Krita
-        self.menu_krita.setIcon(        ki.icon( "hamburger_menu_dots" ) )
         # Tool Box
+        self.menu_krita.setIcon(        ki.icon( "hamburger_menu_dots" ) )
         self.menu_vector.setIcon(       self.tool["vector"][self.index_vector][2] )
         self.menu_brush.setIcon(        self.tool["brush"][self.index_brush][2] )
         self.menu_transform.setIcon(    self.tool["transform"][self.index_transform][2] )
@@ -876,6 +869,7 @@ class Tela_Extension( Extension ):
         self.menu_overlay.setIcon(      self.tool["overlay"][self.index_overlay][2] )
         self.menu_select.setIcon(       self.tool["select"][self.index_select][2] )
         self.menu_camera.setIcon(       self.tool["camera"][self.index_camera][2] )
+        self.menu_break.setIcon(        ki.icon( "hamburger_menu_dots" ) )
         # Transform
         self.spt_free.setIcon(          ki.icon( "transform_icons_main" ) )
         self.spt_perspective.setIcon(   ki.icon( "transform_icons_perspective" ) )
@@ -945,47 +939,27 @@ class Tela_Extension( Extension ):
             # Position
             qpoint = self.menu_color_picker.geometry().topLeft()
             px = qpoint.x()
-            py = qpoint.y() - ph - self.pba - self.my
+            py = qpoint.y() - ph - self.my
             # Geometry
-            self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+            self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
             self.Picker_Geometry( px, py, pw, ph )
     # Tela Geometry
     def Show_Option( self, boolean ):
-        show_option = boolean
-        show_extra = self.action_show_extra.isChecked()
-        hide_tela = self.action_hide_tela.isChecked()
-        self.Tela_Geometry( show_option, show_extra, hide_tela )
-        self.Kritarc_Write( EXTENSION_NAME, "show_option", show_option )
+        self.Tela_Geometry( boolean, self.show_extra, self.hide_tela )
+        self.Kritarc_Write( EXTENSION_NAME, "show_option", boolean )
     def Show_Extra( self, boolean ):
-        show_option = self.action_show_option.isChecked()
-        show_extra = boolean
-        hide_tela = self.action_hide_tela.isChecked()
-        self.Tela_Geometry( show_option, show_extra, hide_tela )
-        self.Kritarc_Write( EXTENSION_NAME, "show_extra", show_extra )
-    def Hide_Tela_Button( self, boolean ):
-        self.action_hide_tela.blockSignals( True )
-        self.action_hide_tela.setChecked( boolean )
-        self.Hide_Tela( boolean )
-        self.action_hide_tela.blockSignals( False )
-    def Hide_Tela_Action( self, boolean ):
-        self.menu_tela.blockSignals( True )
-        self.menu_tela.setChecked( boolean )
-        self.Hide_Tela( boolean )
-        self.menu_tela.blockSignals( False )
+        self.Tela_Geometry( self.show_option, boolean, self.hide_tela )
+        self.Kritarc_Write( EXTENSION_NAME, "show_extra", boolean )
     def Hide_Tela( self, boolean ):
-        show_option = self.action_show_option.isChecked()
-        show_extra = self.action_show_extra.isChecked()
-        hide_tela = boolean
-        if self.qmdiarea != None:
-            self.Tela_Geometry( show_option, show_extra, hide_tela )
-            if hide_tela == True:
-                self.color_picker.hide()
-        self.Kritarc_Write( EXTENSION_NAME, "hide_tela", hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, boolean )
+        if boolean == True:
+            self.color_picker.hide()
+        self.Kritarc_Write( EXTENSION_NAME, "hide_tela", boolean )
     def Tela_Geometry( self, show_option, show_extra, hide_tela ):
         # Size Update
-        self.state_show_option = show_option
-        self.state_show_extra = show_extra
-        self.state_hide_tela = hide_tela
+        self.show_option = show_option
+        self.show_extra = show_extra
+        self.hide_tela = hide_tela
 
         # Geormetry
         if self.qmdiarea != None:
@@ -993,66 +967,68 @@ class Tela_Extension( Extension ):
             qmd_w = self.qmdiarea.width()
             qmd_h = self.qmdiarea.height()
             # Levels
-            l0 = 85
-            l1 = 50
-            l2 = 45
-            l3 = 20
+            l0 = 90
+            l1 = 55
+            l2 = 50
+            l3 = 25
             # Variables
             short = 20
             wide = 50
-            sep = 5
             # Calculations
-            w7 = ( self.pba * 7 ) + ( sep * 6 )
-            w4 = ( self.pba * 4 ) + ( sep * 3 )
-            px7 = qmd_w * 0.5 - w7 * 0.5
+            w2 = ( self.pba * 2 ) + ( self.pbs * 1 )
+            w3 = ( self.pba * 3 ) + ( self.pbs * 2 )
+            w4 = ( self.pba * 4 ) + ( self.pbs * 3 )
+            w5 = ( self.pba * 5 ) + ( self.pbs * 4 )
+            w6 = ( self.pba * 6 ) + ( self.pbs * 5 )
+            w7 = ( self.pba * 7 ) + ( self.pbs * 6 )
+            px2 = qmd_w * 0.5 - w2 * 0.5
+            px3 = qmd_w * 0.5 - w3 * 0.5
             px4 = qmd_w * 0.5 - w4 * 0.5
+            px5 = qmd_w * 0.5 - w5 * 0.5
+            px6 = qmd_w * 0.5 - w6 * 0.5
+            px7 = qmd_w * 0.5 - w7 * 0.5
             offscreen = 100
             dh = int( hide_tela * offscreen )
             # Sub Panel Transform
-            check_transform = show_option == True and self.menu_transform.isChecked() == True and self.index_transform == "transform_tool"
-            if check_transform == True: dt = dh
-            else:                       dt = offscreen
+            check_transform = self.show_option == True and self.menu_transform.isChecked() == True and self.index_transform == "transform_tool"
+            if check_transform == True:     dt = dh
+            else:                           dt = offscreen
             # Sub Panel Select
-            check_select = show_option == True and self.menu_select.isChecked() == True
-            if check_select == True:    ds = dh
-            else:                       ds = offscreen
+            check_select = self.show_option == True and self.menu_select.isChecked() == True
+            if check_select == True:        ds = dh
+            else:                           ds = offscreen
             # Extra
-            if show_extra == True:  de = dh
-            else:                   de = offscreen
+            if self.show_extra == True:    de = dh
+            else:                           de = offscreen
 
-            # Krita
-            self.menu_krita.setGeometry(        int( px7 - self.pba*1 + sep*1 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
             # Tool Box
-            self.menu_vector.setGeometry(       int( px7 + self.pba*0 + sep*0 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + sep*1 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + sep*2 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_color.setGeometry(        int( px7 + self.pba*3 + sep*3 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + sep*4 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_select.setGeometry(       int( px7 + self.pba*5 + sep*5 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + sep*6 ),    int( qmd_h-l0+dh ), self.pba, self.pba )
-            # Transform
-            self.spt_free.setGeometry(          int( px7 + self.pba*8 + sep*8 ),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            self.spt_perspective.setGeometry(   int( px7 + self.pba*9 + sep*9 ),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            self.spt_warp.setGeometry(          int( px7 + self.pba*10+ sep*10),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            self.spt_cage.setGeometry(          int( px7 + self.pba*11+ sep*11),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            self.spt_liquify.setGeometry(       int( px7 + self.pba*12+ sep*12),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            self.spt_mesh.setGeometry(          int( px7 + self.pba*13+ sep*13),    int( qmd_h-l0+dt ), self.pba, self.pba )
-            # Select
-            self.sps_invert.setGeometry(        int( px7 + self.pba*8 + sep*8 ),    int( qmd_h-l0+ds ), self.pba, self.pba )
-            self.sps_all.setGeometry(           int( px7 + self.pba*9 + sep*9 ),    int( qmd_h-l0+ds ), self.pba, self.pba )
-            self.sps_none.setGeometry(          int( px7 + self.pba*10+ sep*10),    int( qmd_h-l0+ds ), self.pba, self.pba )
+            self.menu_krita.setGeometry(        int( px7 - self.pbc*1 - self.pbs*1 ), int( qmd_h-l0+dh ),    self.pbc,  self.pba )
+            self.menu_vector.setGeometry(       int( px7 ),                           int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + self.pbs*1 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + self.pbs*2 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_color.setGeometry(        int( px7 + self.pba*3 + self.pbs*3 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + self.pbs*4 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_select.setGeometry(       int( px7 + self.pba*5 + self.pbs*5 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + self.pbs*6 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
+            self.menu_break.setGeometry(        int( px7 + self.pba*7 + self.pbs*7 ), int( qmd_h-l0+dh ),    self.pbc,  self.pba )
             # Progress Bar
-            self.progress_bar.setGeometry(      int( px7 ),                         int( qmd_h-l1+dh ), int( w7 ), int( sep ) )
-            # Actions
-            self.menu_1.setGeometry(            int( px7 + self.pba*0 + sep*0 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_2.setGeometry(            int( px7 + self.pba*1 + sep*1 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_3.setGeometry(            int( px7 + self.pba*2 + sep*2 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_4.setGeometry(            int( px7 + self.pba*3 + sep*3 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_5.setGeometry(            int( px7 + self.pba*4 + sep*4 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*5 + sep*5 ),    int( qmd_h-l2+de ), self.pba, self.pba )
-            self.menu_color_picker.setGeometry( int( px7 + self.pba*6 + sep*6 ),    int( qmd_h-l2+de ), self.pba, self.pba )
+            self.progress_bar.setGeometry(      int( px7 ),                           int( qmd_h-l1+dh ),    int( w7 ), self.pbs )
+            # Extras
+            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*8 + self.pbs*8 ), int( qmd_h-l0+de ),    self.pba,  self.pba )
+            self.menu_color_picker.setGeometry( int( px7 + self.pba*9 + self.pbs*9 ), int( qmd_h-l0+de ),    self.pba,  self.pba )
+            # Transform
+            self.spt_free.setGeometry(          int( px6 ),                           int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_perspective.setGeometry(   int( px6 + self.pba*1 + self.pbs*1 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_warp.setGeometry(          int( px6 + self.pba*2 + self.pbs*2 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_cage.setGeometry(          int( px6 + self.pba*3 + self.pbs*3 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_liquify.setGeometry(       int( px6 + self.pba*4 + self.pbs*4 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_mesh.setGeometry(          int( px6 + self.pba*5 + self.pbs*5 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            # Select
+            self.sps_invert.setGeometry(        int( px3 ),                           int( qmd_h-l2+ds ),    self.pba,  self.pbb )
+            self.sps_all.setGeometry(           int( px3 + self.pba*1 + self.pbs*1 ), int( qmd_h-l2+ds ),    self.pba,  self.pbb )
+            self.sps_none.setGeometry(          int( px3 + self.pba*2 + self.pbs*2 ), int( qmd_h-l2+ds ),    self.pba,  self.pbb )
             # Hide
-            self.menu_tela.setGeometry(         int( qmd_w*0.5-wide*0.5 ),          int( qmd_h-l3 ),    int( wide ), self.pba )
+            self.menu_tela.setGeometry(         int( qmd_w*0.5-wide*0.5 ),            int( qmd_h-self.pbc ), wide,      self.pba )
     # Picker Geometry
     def Picker_to_Cursor( self ):
         if self.qmdiarea != None:
@@ -1091,8 +1067,9 @@ class Tela_Extension( Extension ):
         self.color_picker.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
 
     #endregion
-    #region Krita
+    #region ToolBox
 
+    # Krita
     def Hold_Krita( self ):
         self.Menu_Reset()
         self.Menu_Timer_Start( self.Menu_Krita )
@@ -1199,9 +1176,38 @@ class Tela_Extension( Extension ):
 
         # Clean up
         self.Menu_Down()
-
-    #endregion
-    #region ToolBox
+    # Break
+    def Hold_Break( self ):
+        self.Menu_Reset()
+        self.Menu_Timer_Start( self.Menu_Break )
+    def Release_Break( self ):
+        self.Menu_Reset()
+    def Menu_Break( self ):
+        # Variables
+        widget = self.menu_break
+        # Menu
+        self.qmenu = QMenu()
+        # State
+        action_show_option = self.qmenu.addAction( "Show Option" )
+        action_show_option.setCheckable( True )
+        action_show_option.setChecked( self.show_option )
+        # Layers
+        action_show_extra = self.qmenu.addAction( "Show Extra" )
+        action_show_extra.setCheckable( True )
+        action_show_extra.setChecked( self.show_extra )
+        # Mapping
+        item = 2
+        size = 23  # 23 is the expected height of a self.qmenu item on windows at least
+        height = size * item + self.my
+        qpoint = widget.geometry().topLeft()
+        pos = self.qmdiarea.mapToGlobal( qpoint )
+        point = QPoint( pos.x(), pos.y() - height )
+        action = self.qmenu.exec_( point )
+        # State
+        if action == action_show_option:    self.Show_Option( not self.show_option )
+        if action == action_show_extra:     self.Show_Extra( not self.show_extra )
+        # Clean up
+        self.Menu_Down()
 
     # Hold
     def Hold_Vector( self ):
@@ -1231,37 +1237,37 @@ class Tela_Extension( Extension ):
         self.Menu_Reset()
         self.action_tool_vector.setChecked( True )
         Krita.instance().action( self.operation["vector"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Brush( self ):
         self.Menu_Reset()
         self.action_tool_brush.setChecked( True )
         Krita.instance().action( self.operation["brush"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Transform( self ):
         self.Menu_Reset()
         self.action_tool_transform.setChecked( True )
         Krita.instance().action( self.operation["transform"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Color( self ):
         self.Menu_Reset()
         self.action_tool_color.setChecked( True )
         Krita.instance().action( self.operation["color"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Overlay( self ):
         self.Menu_Reset()
         self.action_tool_overlay.setChecked( True )
         Krita.instance().action( self.operation["overlay"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Select( self ):
         self.Menu_Reset()
         self.action_tool_select.setChecked( True )
         Krita.instance().action( self.operation["select"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
     def Release_Camera( self ):
         self.Menu_Reset()
         self.action_tool_camera.setChecked( True )
         Krita.instance().action( self.operation["camera"] ).trigger()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
 
     # Menu
     def Menu_Timer_Start( self, function ):
@@ -1367,7 +1373,7 @@ class Tela_Extension( Extension ):
 
         # Clean up
         self.Menu_Down()
-        self.Tela_Geometry( self.state_show_option, self.state_show_extra, self.state_hide_tela )
+        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
 
     # Progress Bar
     def Progress_Bar( self, value ):
@@ -1928,21 +1934,6 @@ class Tela_Extension( Extension ):
         # Actions Picker
         action_picker_to_cursor = window.createAction( "tela_extension_picker_to_cursor", "Picker to Cursor", "tools/scripts/tela_menu" )
         action_picker_to_cursor.triggered.connect( self.Picker_to_Cursor )
-
-        # Actions Show Option
-        self.action_show_option = window.createAction( "tela_extension_show_option", "Show Option", "tools/scripts/tela_menu" )
-        self.action_show_option.setCheckable( True )
-        self.action_show_option.toggled.connect( self.Show_Option )
-
-        # Actions Show Extra
-        self.action_show_extra = window.createAction( "tela_extension_show_extra", "Show Extras", "tools/scripts/tela_menu" )
-        self.action_show_extra.setCheckable( True )
-        self.action_show_extra.toggled.connect( self.Show_Extra )
-
-        # Action Hide Tela
-        self.action_hide_tela = window.createAction( "tela_extension_hide_tela", "Hide Tela", "tools/scripts/tela_menu" )
-        self.action_hide_tela.setCheckable( True )
-        self.action_hide_tela.toggled.connect( self.Hide_Tela_Action )
 
     #endregion
     #region Notes

@@ -153,44 +153,6 @@
           <statusTip></statusTip>
         </Action>
 
-        <!-- Tela Widgets -->
-        <Action name="tela_extension_show_option">
-          <icon></icon>
-          <text>Show Option</text>
-          <whatsThis></whatsThis>
-          <toolTip></toolTip>
-          <iconText></iconText>
-          <activationFlags></activationFlags>
-          <activationConditions></activationConditions>
-          <shortcut>none</shortcut>
-          <isCheckable>true</isCheckable>
-          <statusTip></statusTip>
-        </Action>
-        <Action name="tela_extension_show_extra">
-          <icon></icon>
-          <text>Show Extras</text>
-          <whatsThis></whatsThis>
-          <toolTip></toolTip>
-          <iconText></iconText>
-          <activationFlags></activationFlags>
-          <activationConditions></activationConditions>
-          <shortcut>none</shortcut>
-          <isCheckable>true</isCheckable>
-          <statusTip></statusTip>
-        </Action>
-        <Action name="tela_extension_hide_tela">
-          <icon></icon>
-          <text>Hide Tela</text>
-          <whatsThis></whatsThis>
-          <toolTip></toolTip>
-          <iconText></iconText>
-          <activationFlags></activationFlags>
-          <activationConditions></activationConditions>
-          <shortcut>none</shortcut>
-          <isCheckable>true</isCheckable>
-          <statusTip></statusTip>
-        </Action>
-
 
     </Actions>
 </ActionCollection>
