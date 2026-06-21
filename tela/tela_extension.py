@@ -18,6 +18,9 @@
 #region Imports
 
 # Python Module
+import datetime
+import inspect
+import xml
 import zipfile
 # Krita Module
 from krita import *
@@ -33,7 +36,22 @@ from .tela_modulo import (
 #endregion
 #region Global Variables
 
+# Tela
 EXTENSION_NAME = "Tela"
+
+# time constants
+segundo = 1 # null
+minuto = 60 # seconds
+hora = 60 # minutes
+dia = 24 # hours
+mes = 30.4167 # days
+ano = 12 # moths
+sec_segundo = segundo
+sec_minuto = minuto * sec_segundo
+sec_hora = hora * sec_minuto
+sec_dia = dia * sec_hora
+sec_mes = mes * sec_dia
+sec_ano = ano * sec_mes
 
 #endregion
 
@@ -51,26 +69,47 @@ class Tela_Extension( Extension ):
         self.User_Interface()
         self.Variables()
         self.Modules()
+        self.Updater()
 
     def User_Interface( self ):
         # Operating System
         self.OS = str( QSysInfo.kernelType() ) # WINDOWS=winnt & LINUX=linux
-        if self.OS == 'winnt': # Unlocks icons in Krita for Menu Mode
+        if self.OS == "winnt": # Unlocks icons in Krita for Menu Mode
             QApplication.setAttribute( Qt.AA_DontShowIconsInMenus, False )
         # Path Name
         self.directory_plugin = str( os.path.dirname( os.path.realpath( __file__ ) ) )
         # Color Picker
-        color_picker_ui = os.path.join( self.directory_plugin, "color_picker.ui" )
-        self.color_picker = uic.loadUi( color_picker_ui, QWidget() )
+        ui_color_picker = os.path.join( self.directory_plugin, "color_picker.ui" )
+        self.ui_color_picker = uic.loadUi( ui_color_picker, QWidget() )
+        # Information
+        ui_information = os.path.join( self.directory_plugin, "information.ui" )
+        self.ui_information = uic.loadUi( ui_information, QWidget() )
+        # Guide
+        ui_guide = os.path.join( self.directory_plugin, "guide.ui" )
+        self.ui_guide = uic.loadUi( ui_guide, QWidget() )
     def Variables( self ):
+        # Variables
+        ki = Krita.instance()
+
+        # Version
+        krita_version = ki.version()
+        major = int( krita_version[0] )
+        minor = int( krita_version[2] )
+        self.krita_version = ( major == 5 and minor >= 3 ) or (  major >= 6 ) # comic tool is new in version 5.3
+
         # None Variables
         self.qmenu = None
         self.stacked_widget = None
         self.qmdiarea = None
         self.window_list = list()
 
-        # Variables
-        ki = Krita.instance()
+        # Animation
+        self.animation_frame = None
+        self.check_timer = 1000
+        self.anim_ctime = 0
+        self.anim_stime = 0
+        self.anim_etime = 100
+
         # Vector
         icon_select_tool        = ki.icon( "select" )
         icon_text_tool          = ki.icon( "draw-text" )
@@ -125,7 +164,7 @@ class Tela_Extension( Extension ):
                 "text_tool"          : [ "Text",        "SvgTextTool",                       icon_text_tool,          1 ],
                 "edit_tool"          : [ "Edit",        "PathTool",                          icon_edit_tool,          2 ],
                 "calligraphy_tool"   : [ "Calligraphy", "KarbonCalligraphyTool",             icon_calligraphy_tool,   3 ],
-                "comic_tool"         : [ "Comic",       "KritaShape/KisToolKnife",           icon_comic_tool,         4 ],
+                # "comic_tool"         : [ "Comic",       "KritaShape/KisToolKnife",           icon_comic_tool,         4 ],
                 },
             "brush" : {
                 "freehand_brush"     : [ "Freehand",    "KritaShape/KisToolBrush",           icon_freehand_brush,     0 ],
@@ -172,6 +211,9 @@ class Tela_Extension( Extension ):
                 "pan_tool"           : [ "Pan",         "PanTool",                           icon_pan_tool,           1 ],
                 },
         }
+        if self.krita_version == True: # Krita 5.3 and above have a extra tool
+            self.tool["vector"]["comic_tool"] = [ "Comic", "KritaShape/KisToolKnife", icon_comic_tool, 4 ]
+
         # Operation holds the favorite tools before starting
         self.operation = {
             "vector"    : "InteractionTool",
@@ -182,6 +224,7 @@ class Tela_Extension( Extension ):
             "select"    : "KisToolSelectOutline",
             "camera"    : "PanTool",
         }
+
         # Krita ToolBox ( Install Event Filter )
         self.krita_toolbox = list()
 
@@ -210,7 +253,8 @@ class Tela_Extension( Extension ):
         self.index_select = "freehand_select"
         self.index_camera = "pan_tool"
 
-        # State
+        # State Tela
+        self.show_animation = False
         self.show_option = False
         self.show_extra = False
         self.hide_tela = False
@@ -245,6 +289,24 @@ class Tela_Extension( Extension ):
         self.s2 = 0 # 0-255
         self.s3 = 0 # 0-255
         self.cor = None # Pigment.o color object
+
+        # Icons
+        self.icon_anim_cache = "clear"
+        self.icon_anim_cleanup = "broken-preset"
+        self.icon_mirrorfix = "wraparound"
+
+        # Information
+        self.work_hours = 0
+
+        # Guides
+        self.guide_mirror_h = False
+        self.guide_mirror_v = False
+        self.guide_list_h = list()
+        self.guide_list_v = list()
+        self.guide_ruler = False
+        self.guide_snap = False
+        self.guide_show = False
+        self.guide_lock = False
     def Modules( self ):
         #region Notifier
         self.notifier = Krita.instance().notifier()
@@ -261,12 +323,19 @@ class Tela_Extension( Extension ):
         #endregion
         #region Color Picker
 
-        self.color_display = Color_Display( self.color_picker.color_display )
-        self.color_panel = Color_Panel( self.color_picker.color_panel )
+        self.color_display = Color_Display( self.ui_color_picker.color_display )
+        self.color_panel = Color_Panel( self.ui_color_picker.color_panel )
         self.color_panel.SIGNAL_PREVIEW.connect( self.Color_Panel_Preview )
         self.color_panel.SIGNAL_APPLY.connect( self.Color_Panel_Apply )
 
         #endregion
+    def Updater( self ):
+        # Variables
+        self.anim_delta = 0
+        # QTimer
+        self.qtimer_pulse = QtCore.QTimer( self )
+        self.qtimer_pulse.timeout.connect( self.Update_Cycle )
+        self.qtimer_pulse.start( self.check_timer )
 
     #endregion
     #region Management
@@ -291,7 +360,7 @@ class Tela_Extension( Extension ):
         try:ki.activeWindow().activeView().showFloatingMessage( string, ki.icon( icon ), 5000, 0 )
         except:pass
     # Math
-    def Limit_Range( self, value, mini, maxi, minifix, maxifix ):
+    def Limit_Range( self, value, mini, maxi, minifix=0, maxifix=0 ):
         if value <= mini:   value = mini + minifix
         if value >= maxi:   value = maxi + maxifix
         return value
@@ -358,8 +427,6 @@ class Tela_Extension( Extension ):
         # Camera
         icon_zoom_tool = ki.icon( "tool_zoom" )
         icon_pan_tool = ki.icon( "tool_pan" )
-        # Mirror Fix
-        self.icon_mirrorfix = "wraparound"
 
         # Toolbox ( name, pykrita, qicon )
         self.tool["vector"]["select_tool"][2]       = icon_select_tool
@@ -457,32 +524,43 @@ class Tela_Extension( Extension ):
         else:               h3 = +0.3; p3 = +0.1 # Dark Theme
         handle   = QColor().fromHsvF( but[0], but[1], but[2] + h3 ).name()
         page     = QColor().fromHsvF( but[0], but[1], but[2] + p3 ).name()
+
         # QPushbuttons
-        self.Interface_Highlight( self.menu_vector,       "menu_vector",    c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_brush,        "menu_brush",     c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_transform,    "menu_transform", c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_color,        "menu_color",     c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_overlay,      "menu_overlay",   c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_select,       "menu_select",    c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_camera,       "menu_camera",    c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_vector,       "menu_vector",    c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_brush,        "menu_brush",     c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_transform,    "menu_transform", c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_color,        "menu_color",     c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_overlay,      "menu_overlay",   c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_select,       "menu_select",    c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_camera,       "menu_camera",    c_highlight, t_bright )
         # Progress Bar
         progress_bar_style_sheet = self.ProgressBar_StyleSheet( c_highlight, a_black )
         self.progress_bar.setStyleSheet( progress_bar_style_sheet )
         # Other Buttons
-        self.Interface_Highlight( self.menu_mirror_fix,   "mirror_fix",     c_highlight, t_bright )
-        self.Interface_Highlight( self.menu_color_picker, "color_picker",   c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_mirror_fix,   "mirror_fix",     c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_color_picker, "color_picker",   c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_information,  "information",    c_highlight, t_bright )
+        self.Theme_Highlight( self.menu_guide,        "guide",          c_highlight, t_bright )
 
         # Color_Picker
-        self.Interface_Slider( self.color_picker.s1, handle, w_mid, page, page )
-        self.Interface_Slider( self.color_picker.s2, handle, w_mid, page, page )
-        self.Interface_Slider( self.color_picker.s3, handle, w_mid, page, page )
-        self.color_picker.setStyleSheet( "#color_picker{ background-color: " + w_button + "; }" )
+        self.Theme_Slider( self.ui_color_picker.s1, handle, w_mid, page, page )
+        self.Theme_Slider( self.ui_color_picker.s2, handle, w_mid, page, page )
+        self.Theme_Slider( self.ui_color_picker.s3, handle, w_mid, page, page )
+        self.ui_color_picker.setStyleSheet( "#color_picker{ background-color: " + w_button + "; }" )
+
+    # Troubleshooting
+    def Inspect( self ):
+        functions = list()
+        ins = inspect.stack()
+        for item in ins:
+            functions.append( item[3] )
+        QtCore.qDebug( f"Inspect = { functions }" )
 
     #endregion
     #region Widgets
 
-    # Toolbox
-    def Toolbox_Display( self ):
+    # Tela
+    def Tela_Display( self ):
         # Main Window
         self.stacked_widget = self.window.qwindow().centralWidget()
         self.qmdiarea = self.stacked_widget.findChild( QMdiArea )
@@ -490,25 +568,33 @@ class Tela_Extension( Extension ):
 
         # Display
         self.Interface_Create( self.qmdiarea )
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
+
+        # Progress_Bar
+        self.Connect_Progress_Bar()
+
         # Color Picker
-        self.color_picker.setParent( self.qmdiarea )
-        self.color_picker.hide()
-        # Progress Bar
-        self.krita_progress_bar = self.window.qwindow().statusBar().findChild( QProgressBar )
-        self.krita_progress_bar.valueChanged.connect( self.Progress_Bar )
+        self.ui_color_picker.setParent( self.qmdiarea )
+        self.ui_color_picker.hide()
+        # Information
+        self.ui_information.setParent( self.qmdiarea )
+        self.ui_information.hide()
+        # Guide
+        self.ui_guide.setParent( self.qmdiarea )
+        self.ui_guide.hide()
 
         # Import Pigment.o module
         if self.pigmento_picker == None:
             self.Import_Pigment_O()
-    def Toolbox_Button( self ):
+    def Tela_Button( self ):
         qwindow = Krita.instance().activeWindow().qwindow()
         # Vector Checks
         self.button_select_tool         = qwindow.findChild( QToolButton, self.tool["vector"]["select_tool"][1] )
         self.button_text_tool           = qwindow.findChild( QToolButton, self.tool["vector"]["text_tool"][1] )
         self.button_edit_tool           = qwindow.findChild( QToolButton, self.tool["vector"]["edit_tool"][1] )
         self.button_calligraphy_tool    = qwindow.findChild( QToolButton, self.tool["vector"]["calligraphy_tool"][1] )
-        self.button_comic_tool          = qwindow.findChild( QToolButton, self.tool["vector"]["comic_tool"][1] )
+        if self.krita_version == True:
+            self.button_comic_tool      = qwindow.findChild( QToolButton, self.tool["vector"]["comic_tool"][1] )
         # Brush Checks
         self.button_freehand_brush      = qwindow.findChild( QToolButton, self.tool["brush"]["freehand_brush"][1] )
         self.button_line_brush          = qwindow.findChild( QToolButton, self.tool["brush"]["line_brush"][1] )
@@ -547,7 +633,7 @@ class Tela_Extension( Extension ):
         # Camera Checks
         self.button_zoom_tool           = qwindow.findChild( QToolButton, self.tool["camera"]["zoom_tool"][1] )
         self.button_pan_tool            = qwindow.findChild( QToolButton, self.tool["camera"]["pan_tool"][1] )
-    def Toolbox_Filter_Install( self ):
+    def Tela_Filter_Install( self ):
         # Variables
         app = QApplication.instance()
         list_widget = app.allWidgets()
@@ -559,158 +645,78 @@ class Tela_Extension( Extension ):
             for b in key_b:
                 item = self.tool[a][b][1]
                 list_key.append( item )
-        # Cycle
+        # Toolbox
         for widget in list_widget:
             name = widget.objectName()
             if name in list_key:
                 self.krita_toolbox.append( widget )
                 widget.installEventFilter( self )
-    def Toolbox_Load( self ):
+    def Tela_Load( self ):
         # Kritarc
-        show_option = self.Kritarc_Read( EXTENSION_NAME, "show_option", self.show_option, eval )
-        show_extra  = self.Kritarc_Read( EXTENSION_NAME, "show_extra",  self.show_extra,  eval )
-        hide_tela   = self.Kritarc_Read( EXTENSION_NAME, "hide_tela",   self.hide_tela,   eval )
+        show_animation = self.Kritarc_Read( EXTENSION_NAME, "show_animation", self.show_animation, eval )
+        show_option    = self.Kritarc_Read( EXTENSION_NAME, "show_option",    self.show_option,    eval )
+        show_extra     = self.Kritarc_Read( EXTENSION_NAME, "show_extra",     self.show_extra,     eval )
+        hide_tela      = self.Kritarc_Read( EXTENSION_NAME, "hide_tela",      self.hide_tela,      eval )
         # Tela Button
         self.menu_tela.blockSignals( True )
         self.menu_tela.setChecked( hide_tela )
         self.menu_tela.blockSignals( False )
         # Geometry
-        self.Tela_Geometry( show_option, show_extra, hide_tela )
+        self.Geometry_Tela( show_animation, show_option, show_extra, hide_tela )
     # Tool
     def Tool_Update( self ):
         # Canvas
         check_canvas = self.Check_Canvas()
         if check_canvas == True:
-            # Vector Checks
-            try:select_tool       = self.button_select_tool.isChecked()
-            except:pass
-            try:text_tool         = self.button_text_tool.isChecked()
-            except:pass
-            try:edit_tool         = self.button_edit_tool.isChecked()
-            except:pass
-            try:calligraphy_tool  = self.button_calligraphy_tool.isChecked()
-            except:pass
-            try:comic_tool        = self.button_comic_tool.isChecked()
-            except:pass
-            # Brush Checks
-            try:freehand_brush    = self.button_freehand_brush.isChecked()
-            except:pass
-            try:line_brush        = self.button_line_brush.isChecked()
-            except:pass
-            try:rectangle_brush   = self.button_rectangle_brush.isChecked()
-            except:pass
-            try:ellipse_brush     = self.button_ellipse_brush.isChecked()
-            except:pass
-            try:polygon_brush     = self.button_polygon_brush.isChecked()
-            except:pass
-            try:polyline_brush    = self.button_polyline_brush.isChecked()
-            except:pass
-            try:bezier_brush      = self.button_bezier_brush.isChecked()
-            except:pass
-            try:path_brush        = self.button_path_brush.isChecked()
-            except:pass
-            try:dynamic_brush     = self.button_dynamic_brush.isChecked()
-            except:pass
-            try:multi_brush       = self.button_multi_brush.isChecked()
-            except:pass
-            # Transform Checks
-            try:transform_tool    = self.button_transform_tool.isChecked()
-            except:pass
-            try:move_tool         = self.button_move_tool.isChecked()
-            except:pass
-            try:crop_tool         = self.button_crop_tool.isChecked()
-            except:pass
-            # Color Checks
-            try:gradient_tool     = self.button_gradient_tool.isChecked()
-            except:pass
-            try:sampler_tool      = self.button_sampler_tool.isChecked()
-            except:pass
-            try:colorize_tool     = self.button_colorize_tool.isChecked()
-            except:pass
-            try:patch_tool        = self.button_patch_tool.isChecked()
-            except:pass
-            try:fill_tool         = self.button_fill_tool.isChecked()
-            except:pass
-            try:enclose_tool      = self.button_enclose_tool.isChecked()
-            except:pass
-            # Overlay Checks
-            try:assistant_tool    = self.button_assistant_tool.isChecked()
-            except:pass
-            try:measure_tool      = self.button_measure_tool.isChecked()
-            except:pass
-            try:reference_tool    = self.button_reference_tool.isChecked()
-            except:pass
-            # Selection Checks
-            try:rectangle_select  = self.button_rectangle_select.isChecked()
-            except:pass
-            try:elliptical_select = self.button_elliptical_select.isChecked()
-            except:pass
-            try:polygon_select    = self.button_polygon_select.isChecked()
-            except:pass
-            try:freehand_select   = self.button_freehand_select.isChecked()
-            except:pass
-            try:contiguous_select = self.button_contiguous_select.isChecked()
-            except:pass
-            try:color_select      = self.button_color_select.isChecked()
-            except:pass
-            try:bezier_select     = self.button_bezier_select.isChecked()
-            except:pass
-            try:magnetic_select   = self.button_magnetic_select.isChecked()
-            except:pass
-            # Camera Checks
-            try:zoom_tool         = self.button_zoom_tool.isChecked()
-            except:pass
-            try:pan_tool          = self.button_pan_tool.isChecked()
-            except:pass
-
             # Group
-            if   select_tool       == True : self.Tool_Apply( "vector",    "select_tool",       self.menu_vector )
-            elif text_tool         == True : self.Tool_Apply( "vector",    "text_tool",         self.menu_vector )
-            elif edit_tool         == True : self.Tool_Apply( "vector",    "edit_tool",         self.menu_vector )
-            elif calligraphy_tool  == True : self.Tool_Apply( "vector",    "calligraphy_tool",  self.menu_vector )
-            elif comic_tool        == True : self.Tool_Apply( "vector",    "comic_tool",        self.menu_vector )
+            if   self.button_select_tool.isChecked():           self.Tool_Apply( "vector",    "select_tool",       self.menu_vector )
+            elif self.button_text_tool.isChecked():             self.Tool_Apply( "vector",    "text_tool",         self.menu_vector )
+            elif self.button_edit_tool.isChecked():             self.Tool_Apply( "vector",    "edit_tool",         self.menu_vector )
+            elif self.button_calligraphy_tool.isChecked():      self.Tool_Apply( "vector",    "calligraphy_tool",  self.menu_vector )
+            elif self.krita_version and self.button_comic_tool.isChecked():
+                self.Tool_Apply( "vector", "comic_tool", self.menu_vector )
             # Brush Checks
-            elif freehand_brush    == True : self.Tool_Apply( "brush",     "freehand_brush",    self.menu_brush )
-            elif line_brush        == True : self.Tool_Apply( "brush",     "line_brush",        self.menu_brush )
-            elif rectangle_brush   == True : self.Tool_Apply( "brush",     "rectangle_brush",   self.menu_brush )
-            elif ellipse_brush     == True : self.Tool_Apply( "brush",     "ellipse_brush",     self.menu_brush )
-            elif polygon_brush     == True : self.Tool_Apply( "brush",     "polygon_brush",     self.menu_brush )
-            elif polyline_brush    == True : self.Tool_Apply( "brush",     "polyline_brush",    self.menu_brush )
-            elif bezier_brush      == True : self.Tool_Apply( "brush",     "bezier_brush",      self.menu_brush )
-            elif path_brush        == True : self.Tool_Apply( "brush",     "path_brush",        self.menu_brush )
-            elif dynamic_brush     == True : self.Tool_Apply( "brush",     "dynamic_brush",     self.menu_brush )
-            elif multi_brush       == True : self.Tool_Apply( "brush",     "multi_brush",       self.menu_brush )
+            elif self.button_freehand_brush.isChecked():        self.Tool_Apply( "brush",     "freehand_brush",    self.menu_brush )
+            elif self.button_line_brush.isChecked():            self.Tool_Apply( "brush",     "line_brush",        self.menu_brush )
+            elif self.button_rectangle_brush.isChecked():       self.Tool_Apply( "brush",     "rectangle_brush",   self.menu_brush )
+            elif self.button_ellipse_brush.isChecked():         self.Tool_Apply( "brush",     "ellipse_brush",     self.menu_brush )
+            elif self.button_polygon_brush.isChecked():         self.Tool_Apply( "brush",     "polygon_brush",     self.menu_brush )
+            elif self.button_polyline_brush.isChecked():        self.Tool_Apply( "brush",     "polyline_brush",    self.menu_brush )
+            elif self.button_bezier_brush.isChecked():          self.Tool_Apply( "brush",     "bezier_brush",      self.menu_brush )
+            elif self.button_path_brush.isChecked():            self.Tool_Apply( "brush",     "path_brush",        self.menu_brush )
+            elif self.button_dynamic_brush.isChecked():         self.Tool_Apply( "brush",     "dynamic_brush",     self.menu_brush )
+            elif self.button_multi_brush.isChecked():           self.Tool_Apply( "brush",     "multi_brush",       self.menu_brush )
             # Transform Checks
-            elif transform_tool    == True : self.Tool_Apply( "transform", "transform_tool",    self.menu_transform )
-            elif move_tool         == True : self.Tool_Apply( "transform", "move_tool",         self.menu_transform )
-            elif crop_tool         == True : self.Tool_Apply( "transform", "crop_tool",         self.menu_transform )
+            elif self.button_transform_tool.isChecked():        self.Tool_Apply( "transform", "transform_tool",    self.menu_transform )
+            elif self.button_move_tool.isChecked():             self.Tool_Apply( "transform", "move_tool",         self.menu_transform )
+            elif self.button_crop_tool.isChecked():             self.Tool_Apply( "transform", "crop_tool",         self.menu_transform )
             # Color Checks
-            elif gradient_tool     == True : self.Tool_Apply( "color",     "gradient_tool",     self.menu_color )
-            elif sampler_tool      == True : self.Tool_Apply( "color",     "sampler_tool",      self.menu_color )
-            elif colorize_tool     == True : self.Tool_Apply( "color",     "colorize_tool",     self.menu_color )
-            elif patch_tool        == True : self.Tool_Apply( "color",     "patch_tool",        self.menu_color )
-            elif fill_tool         == True : self.Tool_Apply( "color",     "fill_tool",         self.menu_color )
-            elif enclose_tool      == True : self.Tool_Apply( "color",     "enclose_tool",      self.menu_color )
+            elif self.button_gradient_tool.isChecked():         self.Tool_Apply( "color",     "gradient_tool",     self.menu_color )
+            elif self.button_sampler_tool.isChecked():          self.Tool_Apply( "color",     "sampler_tool",      self.menu_color )
+            elif self.button_colorize_tool.isChecked():         self.Tool_Apply( "color",     "colorize_tool",     self.menu_color )
+            elif self.button_patch_tool.isChecked():            self.Tool_Apply( "color",     "patch_tool",        self.menu_color )
+            elif self.button_fill_tool.isChecked():             self.Tool_Apply( "color",     "fill_tool",         self.menu_color )
+            elif self.button_enclose_tool.isChecked():          self.Tool_Apply( "color",     "enclose_tool",      self.menu_color )
             # Overlay Checks
-            elif assistant_tool    == True : self.Tool_Apply( "overlay",   "assistant_tool",    self.menu_overlay )
-            elif measure_tool      == True : self.Tool_Apply( "overlay",   "measure_tool",      self.menu_overlay )
-            elif reference_tool    == True : self.Tool_Apply( "overlay",   "reference_tool",    self.menu_overlay )
+            elif self.button_assistant_tool.isChecked():        self.Tool_Apply( "overlay",   "assistant_tool",    self.menu_overlay )
+            elif self.button_measure_tool.isChecked():          self.Tool_Apply( "overlay",   "measure_tool",      self.menu_overlay )
+            elif self.button_reference_tool.isChecked():        self.Tool_Apply( "overlay",   "reference_tool",    self.menu_overlay )
             # Selection Checks
-            elif rectangle_select  == True : self.Tool_Apply( "select",    "rectangle_select",  self.menu_select )
-            elif elliptical_select == True : self.Tool_Apply( "select",    "elliptical_select", self.menu_select )
-            elif polygon_select    == True : self.Tool_Apply( "select",    "polygon_select",    self.menu_select )
-            elif freehand_select   == True : self.Tool_Apply( "select",    "freehand_select",   self.menu_select )
-            elif contiguous_select == True : self.Tool_Apply( "select",    "contiguous_select", self.menu_select )
-            elif color_select      == True : self.Tool_Apply( "select",    "color_select",      self.menu_select )
-            elif bezier_select     == True : self.Tool_Apply( "select",    "bezier_select",     self.menu_select )
-            elif magnetic_select   == True : self.Tool_Apply( "select",    "magnetic_select",   self.menu_select )
+            elif self.button_rectangle_select.isChecked():      self.Tool_Apply( "select",    "rectangle_select",  self.menu_select )
+            elif self.button_elliptical_select.isChecked():     self.Tool_Apply( "select",    "elliptical_select", self.menu_select )
+            elif self.button_polygon_select.isChecked():        self.Tool_Apply( "select",    "polygon_select",    self.menu_select )
+            elif self.button_freehand_select.isChecked():       self.Tool_Apply( "select",    "freehand_select",   self.menu_select )
+            elif self.button_contiguous_select.isChecked():     self.Tool_Apply( "select",    "contiguous_select", self.menu_select )
+            elif self.button_color_select.isChecked():          self.Tool_Apply( "select",    "color_select",      self.menu_select )
+            elif self.button_bezier_select.isChecked():         self.Tool_Apply( "select",    "bezier_select",     self.menu_select )
+            elif self.button_magnetic_select.isChecked():       self.Tool_Apply( "select",    "magnetic_select",   self.menu_select )
             # Camera Checks
-            elif zoom_tool         == True : self.Tool_Apply( "camera",    "zoom_tool",         self.menu_camera )
-            elif pan_tool          == True : self.Tool_Apply( "camera",    "pan_tool",          self.menu_camera )
+            elif self.button_zoom_tool.isChecked():             self.Tool_Apply( "camera",    "zoom_tool",         self.menu_camera )
+            elif self.button_pan_tool.isChecked():              self.Tool_Apply( "camera",    "pan_tool",          self.menu_camera )
             # Error
             else:self.Message_Float( "ERROR", "new tool present ?", "broken-preset" )
             # Clean
-            self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+            self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Tool_Apply( self, mode, tool, widget ):
         # Variables
         operation = self.tool[mode][tool][1]
@@ -728,6 +734,11 @@ class Tela_Extension( Extension ):
         widget.setIcon( qicon )
         widget.setChecked( True )
 
+    # Connect Krita UI with Tela
+    def Connect_Progress_Bar( self ):
+        self.krita_progress_bar = self.window.qwindow().statusBar().findChild( QProgressBar )
+        self.krita_progress_bar.valueChanged.connect( self.Progress_Bar )
+
     # Interface
     def Interface_Create( self, parent ):
         #region Widgets
@@ -735,35 +746,49 @@ class Tela_Extension( Extension ):
         # Variables
         bar = ( self.pba * 7 ) + ( self.pbs * 6 )
 
+        # Animation
+        self.anim_play          = QPushButton( "anim_play", parent )
+        self.anim_onion         = QPushButton( "anim_onion", parent )
+        self.anim_cache         = QPushButton( "anim_cache", parent )
+        self.anim_cleanup       = QPushButton( "anim_cleanup", parent )
+        self.anim_timeline      = QSlider( parent )
         # Tool Box
-        self.menu_krita        = QPushButton( "menu_krita", parent )
-        self.menu_vector       = QPushButton( "menu_vector", parent )
-        self.menu_brush        = QPushButton( "menu_brush", parent )
-        self.menu_transform    = QPushButton( "menu_transform", parent )
-        self.menu_color        = QPushButton( "menu_color", parent )
-        self.menu_overlay      = QPushButton( "menu_overlay", parent )
-        self.menu_select       = QPushButton( "menu_select", parent )
-        self.menu_camera       = QPushButton( "menu_camera", parent )
-        self.menu_break        = QPushButton( "menu_break", parent )
+        self.menu_krita         = QPushButton( "menu_krita", parent )
+        self.menu_vector        = QPushButton( "menu_vector", parent )
+        self.menu_brush         = QPushButton( "menu_brush", parent )
+        self.menu_transform     = QPushButton( "menu_transform", parent )
+        self.menu_color         = QPushButton( "menu_color", parent )
+        self.menu_overlay       = QPushButton( "menu_overlay", parent )
+        self.menu_select        = QPushButton( "menu_select", parent )
+        self.menu_camera        = QPushButton( "menu_camera", parent )
+        self.menu_break         = QPushButton( "menu_break", parent )
         # Progress Bar
-        self.progress_bar      = QProgressBar( parent )
+        self.progress_bar       = QProgressBar( parent )
         # Extras
-        self.menu_mirror_fix   = QPushButton( "menu_mirror_fix", parent )
-        self.menu_color_picker = QPushButton( "menu_color_picker", parent )
+        self.menu_information   = QPushButton( "menu_information", parent )
+        self.menu_guide         = QPushButton( "menu_guide", parent )
+        self.menu_color_picker  = QPushButton( "menu_color_picker", parent )
+        self.menu_mirror_fix    = QPushButton( "menu_mirror_fix", parent )
         # Transform
-        self.spt_free          = QPushButton( "spt_free", parent )
-        self.spt_perspective   = QPushButton( "spt_perspective", parent )
-        self.spt_warp          = QPushButton( "spt_warp", parent )
-        self.spt_cage          = QPushButton( "spt_cage", parent )
-        self.spt_liquify       = QPushButton( "spt_liquify", parent )
-        self.spt_mesh          = QPushButton( "spt_mesh", parent )
+        self.spt_free           = QPushButton( "spt_free", parent )
+        self.spt_perspective    = QPushButton( "spt_perspective", parent )
+        self.spt_warp           = QPushButton( "spt_warp", parent )
+        self.spt_cage           = QPushButton( "spt_cage", parent )
+        self.spt_liquify        = QPushButton( "spt_liquify", parent )
+        self.spt_mesh           = QPushButton( "spt_mesh", parent )
         # Select
-        self.sps_invert        = QPushButton( "sps_invert", parent )
-        self.sps_all           = QPushButton( "sps_all", parent )
-        self.sps_none          = QPushButton( "sps_none", parent )
+        self.sps_invert         = QPushButton( "sps_invert", parent )
+        self.sps_all            = QPushButton( "sps_all", parent )
+        self.sps_none           = QPushButton( "sps_none", parent )
         # Hide
-        self.menu_tela         = QPushButton( "hide", parent )
+        self.menu_tela          = QPushButton( "hide", parent )
 
+        # Animation
+        self.Interface_Push_Button(  self.anim_play,         "anim_play",         self.pba, self.pbc, False, False, False )
+        self.Interface_Push_Button(  self.anim_onion,        "anim_onion",        self.pba, self.pbc, False, False, False )
+        self.Interface_Push_Button(  self.anim_cache,        "anim_cache",        self.pba, self.pbc, False, False, False )
+        self.Interface_Push_Button(  self.anim_cleanup,      "anim_cleanup",      self.pba, self.pbc, False, False, False )
+        self.Interface_Slider(       self.anim_timeline )
         # Tool Box
         self.Interface_Push_Button(  self.menu_krita,        "menu_krita",        self.pbc, self.pba, False, False, False )
         self.Interface_Push_Button(  self.menu_vector,       "menu_vector",       self.pba, self.pba, True,  True,  False )
@@ -777,8 +802,10 @@ class Tela_Extension( Extension ):
         # Progress Bar
         self.Interface_Progress_Bar( self.progress_bar,      "progress_bar",      bar,      self.pbs )
         # Extras
+        self.Interface_Push_Button(  self.menu_information,  "menu_information",  self.pba, self.pba, True,  False, False )
+        self.Interface_Push_Button(  self.menu_guide,        "menu_guide",        self.pba, self.pba, True,  False, False )
+        self.Interface_Push_Button(  self.menu_color_picker, "menu_color_picker", self.pba, self.pba, True,  False, False )
         self.Interface_Push_Button(  self.menu_mirror_fix,   "menu_mirror_fix",   self.pba, self.pba, False, False, False )
-        self.Interface_Push_Button(  self.menu_color_picker, "menu_color_picker", self.pba, self.pba, False, False, False )
         # Transform
         self.Interface_Push_Button(  self.spt_free,          "spt_free",          self.pba, self.pbb, False, False, False )
         self.Interface_Push_Button(  self.spt_perspective,   "spt_perspective",   self.pba, self.pbb, False, False, False )
@@ -796,6 +823,12 @@ class Tela_Extension( Extension ):
         #endregion
         #region Connections
 
+        # Animation
+        self.anim_play.clicked.connect( self.Animation_Play )
+        self.anim_onion.clicked.connect( self.Animation_Onion )
+        self.anim_cache.clicked.connect( self.Animation_Cache )
+        self.anim_cleanup.clicked.connect( self.Animation_Frame )
+        self.anim_timeline.valueChanged.connect( self.Animation_Time )
         # Krita Menu
         self.menu_krita.pressed.connect( self.Hold_Krita )
         self.menu_krita.released.connect( self.Release_Krita )
@@ -834,19 +867,39 @@ class Tela_Extension( Extension ):
         self.sps_invert.clicked.connect( self.Select_Invert )
         self.sps_all.clicked.connect( self.Select_All )
         self.sps_none.clicked.connect( self.Select_None )
+        # Extra Information
+        self.menu_information.toggled.connect( self.Extra_Information )
+        self.ui_information.info_title.textChanged.connect( self.Information_Save )
+        self.ui_information.info_description.textChanged.connect( self.Information_Save )
+        self.ui_information.info_subject.textChanged.connect( self.Information_Save )
+        self.ui_information.info_keyword.textChanged.connect( self.Information_Save )
+        self.ui_information.info_license.textChanged.connect( self.Information_Save )
+        self.ui_information.menu_money_rate.valueChanged.connect( self.Money_Rate )
+        self.ui_information.menu_money_total.valueChanged.connect( self.Money_Total )
+        self.ui_information.info_contact.itemClicked.connect( self.Information_Copy )
+        # Extra Guide
+        self.menu_guide.toggled.connect( self.Extra_Guide )
+        self.ui_guide.guide_mirror_h.toggled.connect( self.Guide_Mirror_Horizontal )
+        self.ui_guide.guide_mirror_v.toggled.connect( self.Guide_Mirror_Vertical )
+        self.ui_guide.guide_list_h.doubleClicked.connect( self.Guide_Value_Horizontal )
+        self.ui_guide.guide_list_v.doubleClicked.connect( self.Guide_Value_Vertical )
+        self.ui_guide.guide_ruler.toggled.connect( self.Guide_Ruler )
+        self.ui_guide.guide_show.toggled.connect( self.Guide_Show )
+        self.ui_guide.guide_snap.toggled.connect( self.Guide_Snap )
+        self.ui_guide.guide_lock.toggled.connect( self.Guide_Lock )
         # Extra Color Picker
-        self.menu_color_picker.clicked.connect( self.Show_Color_Picker )
-        self.color_picker.s1.valueChanged.connect(   lambda: self.CS1_W( False ) )
-        self.color_picker.s1.sliderReleased.connect( lambda: self.CS1_W( True ) )
-        self.color_picker.s2.valueChanged.connect(   lambda: self.CS2_W( False ) )
-        self.color_picker.s2.sliderReleased.connect( lambda: self.CS2_W( True ) )
-        self.color_picker.s3.valueChanged.connect(   lambda: self.CS3_W( False ) )
-        self.color_picker.s3.sliderReleased.connect( lambda: self.CS3_W( True ) )
+        self.menu_color_picker.toggled.connect( self.Extra_Color_Picker )
+        self.ui_color_picker.s1.valueChanged.connect(   lambda: self.CS1_W( False ) )
+        self.ui_color_picker.s1.sliderReleased.connect( lambda: self.CS1_W( True ) )
+        self.ui_color_picker.s2.valueChanged.connect(   lambda: self.CS2_W( False ) )
+        self.ui_color_picker.s2.sliderReleased.connect( lambda: self.CS2_W( True ) )
+        self.ui_color_picker.s3.valueChanged.connect(   lambda: self.CS3_W( False ) )
+        self.ui_color_picker.s3.sliderReleased.connect( lambda: self.CS3_W( True ) )
         # Hide
         self.menu_tela.toggled.connect( self.Hide_Tela )
 
         # User Interface Update
-        self.color_picker.installEventFilter( self )
+        self.ui_color_picker.installEventFilter( self )
 
         #endregion
         #region Modules
@@ -860,34 +913,76 @@ class Tela_Extension( Extension ):
 
         # Krita Instance
         ki = Krita.instance()
+        # Animation
+        self.anim_play.setIcon(          ki.icon( "animation_play" ) )
+        self.anim_onion.setIcon(         ki.icon( "onion_skin_options" ) )
+        self.anim_cache.setIcon(         ki.icon( self.icon_anim_cache ) )
+        self.anim_cleanup.setIcon(       ki.icon( self.icon_anim_cleanup ) )
         # Tool Box
-        self.menu_krita.setIcon(        ki.icon( "hamburger_menu_dots" ) )
-        self.menu_vector.setIcon(       self.tool["vector"][self.index_vector][2] )
-        self.menu_brush.setIcon(        self.tool["brush"][self.index_brush][2] )
-        self.menu_transform.setIcon(    self.tool["transform"][self.index_transform][2] )
-        self.menu_color.setIcon(        self.tool["color"][self.index_color][2] )
-        self.menu_overlay.setIcon(      self.tool["overlay"][self.index_overlay][2] )
-        self.menu_select.setIcon(       self.tool["select"][self.index_select][2] )
-        self.menu_camera.setIcon(       self.tool["camera"][self.index_camera][2] )
-        self.menu_break.setIcon(        ki.icon( "hamburger_menu_dots" ) )
-        # Transform
-        self.spt_free.setIcon(          ki.icon( "transform_icons_main" ) )
-        self.spt_perspective.setIcon(   ki.icon( "transform_icons_perspective" ) )
-        self.spt_warp.setIcon(          ki.icon( "transform_icons_warp" ) )
-        self.spt_cage.setIcon(          ki.icon( "transform_icons_cage" ) )
-        self.spt_liquify.setIcon(       ki.icon( "transform_icons_liquify_main" ) )
-        self.spt_mesh.setIcon(          ki.icon( "transform_icons_mesh" ) )
-        # Select
-        self.sps_invert.setIcon(        ki.icon( "select-invert" ) )
-        self.sps_all.setIcon(           ki.icon( "select-all" ) )
-        self.sps_none.setIcon(          ki.icon( "select-clear" ) )
+        self.menu_krita.setIcon(         ki.icon( "hamburger_menu_dots" ) )
+        self.menu_vector.setIcon(        self.tool["vector"][self.index_vector][2] )
+        self.menu_brush.setIcon(         self.tool["brush"][self.index_brush][2] )
+        self.menu_transform.setIcon(     self.tool["transform"][self.index_transform][2] )
+        self.menu_color.setIcon(         self.tool["color"][self.index_color][2] )
+        self.menu_overlay.setIcon(       self.tool["overlay"][self.index_overlay][2] )
+        self.menu_select.setIcon(        self.tool["select"][self.index_select][2] )
+        self.menu_camera.setIcon(        self.tool["camera"][self.index_camera][2] )
+        self.menu_break.setIcon(         ki.icon( "hamburger_menu_dots" ) )
+        # Extras
+        self.menu_information.setIcon(   ki.icon( "selection-info" ) )
+        self.menu_guide.setIcon(         ki.icon( "addlayer" ) )
+        self.menu_color_picker.setIcon(  ki.icon( "close-tab" ) )
+        self.menu_mirror_fix.setIcon(    ki.icon( self.icon_mirrorfix ) )
         # Progress Bar
         self.progress_bar.setStyleSheet( "#progress_bar{ background-color: rgba( 0, 0, 0, 0 ); }" )
-        # Actions
-        self.menu_mirror_fix.setIcon(   ki.icon( self.icon_mirrorfix )   )
-        self.menu_color_picker.setIcon( ki.icon( "close-tab" ) )
+        # Transform
+        self.spt_free.setIcon(           ki.icon( "transform_icons_main" ) )
+        self.spt_perspective.setIcon(    ki.icon( "transform_icons_perspective" ) )
+        self.spt_warp.setIcon(           ki.icon( "transform_icons_warp" ) )
+        self.spt_cage.setIcon(           ki.icon( "transform_icons_cage" ) )
+        self.spt_liquify.setIcon(        ki.icon( "transform_icons_liquify_main" ) )
+        self.spt_mesh.setIcon(           ki.icon( "transform_icons_mesh" ) )
+        # Select
+        self.sps_invert.setIcon(         ki.icon( "select-invert" ) )
+        self.sps_all.setIcon(            ki.icon( "select-all" ) )
+        self.sps_none.setIcon(           ki.icon( "select-clear" ) )
         # Hide
-        self.menu_tela.setIcon( ki.icon( "arrow-up" ) )
+        self.menu_tela.setIcon(          ki.icon( "arrow-up" ) )
+
+        #endregion
+        #region Tooltip
+
+        # Animation
+        self.anim_play.setToolTip( "Play / Pause" )
+        self.anim_onion.setToolTip( "Onion Skin" )
+        self.anim_cache.setToolTip( "Clear Cache" )
+        self.anim_cleanup.setToolTip( "Animation Cleanup" )
+        # Tool Box
+        self.menu_krita.setToolTip( "Krita Options" )
+        self.menu_vector.setToolTip( "Vector" )
+        self.menu_brush.setToolTip( "Brush" )
+        self.menu_transform.setToolTip( "Transform" )
+        self.menu_color.setToolTip( "Color" )
+        self.menu_overlay.setToolTip( "Overlay" )
+        self.menu_select.setToolTip( "Select" )
+        self.menu_camera.setToolTip( "Camera" )
+        self.menu_break.setToolTip( "Tela Options" )
+        # Extras
+        self.menu_information.setToolTip( "Information" )
+        self.menu_guide.setToolTip( "Guide" )
+        self.menu_color_picker.setToolTip( "Color Picker" )
+        self.menu_mirror_fix.setToolTip( "Mirror Fix" )
+        # Transform
+        self.spt_free.setToolTip( "Free" )
+        self.spt_perspective.setToolTip( "Perspective" )
+        self.spt_warp.setToolTip( "Warp" )
+        self.spt_cage.setToolTip( "Cage" )
+        self.spt_liquify.setToolTip( "Liquify" )
+        self.spt_mesh.setToolTip( "Mesh" )
+        # Select
+        self.sps_invert.setToolTip( "Invert" )
+        self.sps_all.setToolTip( "Select All" )
+        self.sps_none.setToolTip( "Deselect" )
 
         #endregion
     def Interface_Push_Button( self, button, name, pw, ph, check, exclusive, flat ):
@@ -918,10 +1013,14 @@ class Tela_Extension( Extension ):
         progress.setMinimum( 0 )
         progress.setMaximum( 99 )
         progress.setValue( 0 )
-        progress.setTextVisible( False )        
-    def Interface_Highlight( self, button, name, background, pen ):
+        progress.setTextVisible( False )
+    def Interface_Slider( self, slider ):
+        slider.setOrientation( Qt.Horizontal )
+        slider.setTickPosition( QSlider.TicksBelow )
+    # Theme
+    def Theme_Highlight( self, button, name, background, pen ):
         button.setStyleSheet( "#" + str( name ) + "::checked{ background-color : " + str( background ) + ";}" )
-    def Interface_Slider( self, widget, handle, border, page_sub, page_add ):
+    def Theme_Slider( self, widget, handle, border, page_sub, page_add ):
         style_sheet = str()
         style_sheet += "QSlider::groove:horizontal { border: 1px solid; height: 2px; }"
         style_sheet += "QSlider::handle:horizontal { background-color: " + handle + "; width: 10px; height: 10px; margin: -5px 2px; border: 1px solid " + border + "; border-radius: 5px; }"
@@ -932,31 +1031,78 @@ class Tela_Extension( Extension ):
     # Geometry
     def Size_Update( self ):
         if self.qmdiarea != None:
-            # Size
-            wcp = self.color_picker
-            pw = wcp.width()
-            ph = wcp.height()
-            # Position
-            qpoint = self.menu_color_picker.geometry().topLeft()
-            px = qpoint.x()
-            py = qpoint.y() - ph - self.my
             # Geometry
-            self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
-            self.Picker_Geometry( px, py, pw, ph )
-    # Tela Geometry
+            self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
+            # Information
+            if self.menu_information.isChecked() == True:
+                self.Geometry_Information()
+            # Guide
+            if self.menu_guide.isChecked() == True:
+                self.Geometry_Guide()
+            # Color Picker
+            if self.menu_color_picker.isChecked() == True:
+                wcp = self.ui_color_picker
+                cp_w = wcp.width()
+                cp_h = wcp.height()
+                qpoint = self.menu_color_picker.geometry().topLeft()
+                cp_x = qpoint.x()
+                cp_y = qpoint.y() - cp_h - self.my
+                self.Geometry_Picker( cp_x, cp_y, cp_w, cp_h )
+    # Show Geometry
+    def Show_Animation( self, boolean ):
+        self.Geometry_Tela( boolean, self.show_option, self.show_extra, self.hide_tela )
+        self.Kritarc_Write( EXTENSION_NAME, "show_animation", boolean )
     def Show_Option( self, boolean ):
-        self.Tela_Geometry( boolean, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, boolean, self.show_extra, self.hide_tela )
         self.Kritarc_Write( EXTENSION_NAME, "show_option", boolean )
     def Show_Extra( self, boolean ):
-        self.Tela_Geometry( self.show_option, boolean, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, boolean, self.hide_tela )
+        if boolean == False:
+            self.Menu_Hide()
+            self.Menu_False()
         self.Kritarc_Write( EXTENSION_NAME, "show_extra", boolean )
-    def Hide_Tela( self, boolean ):
-        self.Tela_Geometry( self.show_option, self.show_extra, boolean )
+    # Show Extras
+    def Extra_Information( self, boolean ):
         if boolean == True:
-            self.color_picker.hide()
+            self.Menu_Reset()
+            self.Size_Update()
+            self.Information_Read()
+            self.Extra_Exclusive( "information" )
+            self.ui_information.show()
+        else:
+            self.ui_information.hide()
+    def Extra_Guide( self, boolean ):
+        if boolean == True:
+            self.Menu_Reset()
+            self.Size_Update()
+            self.Extra_Exclusive( "guide" )
+            self.ui_guide.show()
+        else:
+            self.ui_guide.hide()
+    def Extra_Color_Picker( self, boolean ):
+        if boolean == True:
+            self.Menu_Reset()
+            self.Size_Update()
+            self.Color_READ()
+            self.Extra_Exclusive( "color_picker" )
+            self.ui_color_picker.show()
+        else:
+            self.ui_color_picker.hide()
+    def Extra_Exclusive( self, widget ):
+        if widget != "information":     self.menu_information.setChecked( False )
+        if widget != "guide":           self.menu_guide.setChecked( False )
+        if widget != "color_picker":    self.menu_color_picker.setChecked( False )
+
+    # Tela Geometry
+    def Hide_Tela( self, boolean ):
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, boolean )
+        if boolean == True:
+            self.Menu_Hide()
+            self.Menu_False()
         self.Kritarc_Write( EXTENSION_NAME, "hide_tela", boolean )
-    def Tela_Geometry( self, show_option, show_extra, hide_tela ):
+    def Geometry_Tela( self, show_animation, show_option, show_extra, hide_tela ):
         # Size Update
+        self.show_animation = show_animation
         self.show_option = show_option
         self.show_extra = show_extra
         self.hide_tela = hide_tela
@@ -967,13 +1113,15 @@ class Tela_Extension( Extension ):
             qmd_w = self.qmdiarea.width()
             qmd_h = self.qmdiarea.height()
             # Levels
-            l0 = 90
-            l1 = 55
-            l2 = 50
-            l3 = 25
+            la = 120
+            lb = la + 30
+            lt = 90
+            lp = 55
+            lo = 50
             # Variables
             short = 20
             wide = 50
+            offscreen = 200
             # Calculations
             w2 = ( self.pba * 2 ) + ( self.pbs * 1 )
             w3 = ( self.pba * 3 ) + ( self.pbs * 2 )
@@ -987,49 +1135,77 @@ class Tela_Extension( Extension ):
             px5 = qmd_w * 0.5 - w5 * 0.5
             px6 = qmd_w * 0.5 - w6 * 0.5
             px7 = qmd_w * 0.5 - w7 * 0.5
-            offscreen = 100
-            dh = int( hide_tela * offscreen )
+            pxk = px7 - self.pbc*1 - self.pbs*1
+            d0 = int( hide_tela * offscreen )
+
+            # Animation
+            if self.show_animation == True: da = d0
+            else:                           da = offscreen
             # Sub Panel Transform
             check_transform = self.show_option == True and self.menu_transform.isChecked() == True and self.index_transform == "transform_tool"
-            if check_transform == True:     dt = dh
+            if check_transform == True:     dt = d0
             else:                           dt = offscreen
             # Sub Panel Select
-            check_select = self.show_option == True and self.menu_select.isChecked() == True
-            if check_select == True:        ds = dh
+            check_select = self.show_option == True and self.menu_select.isChecked() == True # all select tools have the same options
+            if check_select == True:        ds = d0
             else:                           ds = offscreen
             # Extra
-            if self.show_extra == True:    de = dh
+            if self.show_extra == True:     de = d0
             else:                           de = offscreen
 
+            # Animation
+            self.anim_play.setGeometry(         int( px7 + self.pba*0 + self.pbs*0 ), int( qmd_h-lb+da ),    self.pba,  self.pbc )
+            self.anim_onion.setGeometry(        int( px7 + self.pba*4 + self.pbs*4 ), int( qmd_h-lb+da ),    self.pba,  self.pbc )
+            self.anim_cache.setGeometry(        int( px7 + self.pba*5 + self.pbs*5 ), int( qmd_h-lb+da ),    self.pba,  self.pbc )
+            self.anim_cleanup.setGeometry(      int( px7 + self.pba*6 + self.pbs*6 ), int( qmd_h-lb+da ),    self.pba,  self.pbc )
+            self.anim_timeline.setGeometry(     int( px7 ),                           int( qmd_h-la+da ),    int( w7 ), short )
             # Tool Box
-            self.menu_krita.setGeometry(        int( px7 - self.pbc*1 - self.pbs*1 ), int( qmd_h-l0+dh ),    self.pbc,  self.pba )
-            self.menu_vector.setGeometry(       int( px7 ),                           int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + self.pbs*1 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + self.pbs*2 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_color.setGeometry(        int( px7 + self.pba*3 + self.pbs*3 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + self.pbs*4 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_select.setGeometry(       int( px7 + self.pba*5 + self.pbs*5 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + self.pbs*6 ), int( qmd_h-l0+dh ),    self.pba,  self.pba )
-            self.menu_break.setGeometry(        int( px7 + self.pba*7 + self.pbs*7 ), int( qmd_h-l0+dh ),    self.pbc,  self.pba )
+            self.menu_krita.setGeometry(        int( pxk ),                           int( qmd_h-lt+d0 ),    self.pbc,  self.pba )
+            self.menu_vector.setGeometry(       int( px7 ),                           int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_brush.setGeometry(        int( px7 + self.pba*1 + self.pbs*1 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_transform.setGeometry(    int( px7 + self.pba*2 + self.pbs*2 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_color.setGeometry(        int( px7 + self.pba*3 + self.pbs*3 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_overlay.setGeometry(      int( px7 + self.pba*4 + self.pbs*4 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_select.setGeometry(       int( px7 + self.pba*5 + self.pbs*5 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_camera.setGeometry(       int( px7 + self.pba*6 + self.pbs*6 ), int( qmd_h-lt+d0 ),    self.pba,  self.pba )
+            self.menu_break.setGeometry(        int( px7 + self.pba*7 + self.pbs*7 ), int( qmd_h-lt+d0 ),    self.pbc,  self.pba )
             # Progress Bar
-            self.progress_bar.setGeometry(      int( px7 ),                           int( qmd_h-l1+dh ),    int( w7 ), self.pbs )
+            self.progress_bar.setGeometry(      int( px7 ),                           int( qmd_h-lp+d0 ),    int( w7 ), self.pbs )
             # Extras
-            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*8 + self.pbs*8 ), int( qmd_h-l0+de ),    self.pba,  self.pba )
-            self.menu_color_picker.setGeometry( int( px7 + self.pba*9 + self.pbs*9 ), int( qmd_h-l0+de ),    self.pba,  self.pba )
+            self.menu_information.setGeometry(  int( px7 + self.pba*8 + self.pbs*8 ), int( qmd_h-lt+de ),    self.pba,  self.pba )
+            self.menu_guide.setGeometry(        int( px7 + self.pba*9 + self.pbs*9 ), int( qmd_h-lt+de ),    self.pba,  self.pba )
+            self.menu_color_picker.setGeometry( int( px7 + self.pba*10+ self.pbs*10), int( qmd_h-lt+de ),    self.pba,  self.pba )
+            self.menu_mirror_fix.setGeometry(   int( px7 + self.pba*8 + self.pbs*8 ), int( qmd_h-lo+de ),    self.pba,  self.pba )
             # Transform
-            self.spt_free.setGeometry(          int( px6 ),                           int( qmd_h-l2+dt ),    self.pba,  self.pbb )
-            self.spt_perspective.setGeometry(   int( px6 + self.pba*1 + self.pbs*1 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
-            self.spt_warp.setGeometry(          int( px6 + self.pba*2 + self.pbs*2 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
-            self.spt_cage.setGeometry(          int( px6 + self.pba*3 + self.pbs*3 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
-            self.spt_liquify.setGeometry(       int( px6 + self.pba*4 + self.pbs*4 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
-            self.spt_mesh.setGeometry(          int( px6 + self.pba*5 + self.pbs*5 ), int( qmd_h-l2+dt ),    self.pba,  self.pbb )
+            self.spt_free.setGeometry(          int( px6 ),                           int( qmd_h-lo+dt ),    self.pba,  self.pbb )
+            self.spt_perspective.setGeometry(   int( px6 + self.pba*1 + self.pbs*1 ), int( qmd_h-lo+dt ),    self.pba,  self.pbb )
+            self.spt_warp.setGeometry(          int( px6 + self.pba*2 + self.pbs*2 ), int( qmd_h-lo+dt ),    self.pba,  self.pbb )
+            self.spt_cage.setGeometry(          int( px6 + self.pba*3 + self.pbs*3 ), int( qmd_h-lo+dt ),    self.pba,  self.pbb )
+            self.spt_liquify.setGeometry(       int( px6 + self.pba*4 + self.pbs*4 ), int( qmd_h-lo+dt ),    self.pba,  self.pbb )
+            self.spt_mesh.setGeometry(          int( px6 + self.pba*5 + self.pbs*5 ), int( qmd_h-lo+dt ),    self.pba,  self.pbb )
             # Select
-            self.sps_invert.setGeometry(        int( px3 ),                           int( qmd_h-l2+ds ),    self.pba,  self.pbb )
-            self.sps_all.setGeometry(           int( px3 + self.pba*1 + self.pbs*1 ), int( qmd_h-l2+ds ),    self.pba,  self.pbb )
-            self.sps_none.setGeometry(          int( px3 + self.pba*2 + self.pbs*2 ), int( qmd_h-l2+ds ),    self.pba,  self.pbb )
+            self.sps_invert.setGeometry(        int( px3 ),                           int( qmd_h-lo+ds ),    self.pba,  self.pbb )
+            self.sps_all.setGeometry(           int( px3 + self.pba*1 + self.pbs*1 ), int( qmd_h-lo+ds ),    self.pba,  self.pbb )
+            self.sps_none.setGeometry(          int( px3 + self.pba*2 + self.pbs*2 ), int( qmd_h-lo+ds ),    self.pba,  self.pbb )
             # Hide
             self.menu_tela.setGeometry(         int( qmd_w*0.5-wide*0.5 ),            int( qmd_h-self.pbc ), wide,      self.pba )
-    # Picker Geometry
+    # Extra Geometry
+    def Geometry_Information( self ):
+        wi = self.ui_information
+        ww = wi.width()
+        wh = wi.height()
+        qpoint = self.menu_information.geometry().topLeft()
+        px = qpoint.x()
+        py = qpoint.y() - wh - self.my
+        self.ui_information.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
+    def Geometry_Guide( self ):
+        wi = self.ui_guide
+        ww = wi.width()
+        wh = wi.height()
+        qpoint = self.menu_guide.geometry().topLeft()
+        px = qpoint.x()
+        py = qpoint.y() - wh - self.my
+        self.ui_guide.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
     def Picker_to_Cursor( self ):
         if self.qmdiarea != None:
             # Cursor
@@ -1041,11 +1217,11 @@ class Tela_Extension( Extension ):
             dx = delta.x()
             dy = delta.y()
             # Widget
-            widget = self.color_picker
+            widget = self.ui_color_picker
             ww = widget.width()
             wh = widget.height()
             # Color Panel
-            colorpanel = self.color_picker.color_panel
+            colorpanel = self.ui_color_picker.color_panel
             cpx = colorpanel.x()
             cpy = colorpanel.y()
             cpw = colorpanel.width()
@@ -1056,23 +1232,143 @@ class Tela_Extension( Extension ):
             cp_cy = self.Limit_Range( int( cp_cy ), 0, cph, 0, -1 )
 
             # Relocate Color Picker
-            self.Picker_Geometry( cx+dx-cpx-cp_cx, cy+dy-cpy-cp_cy, ww, wh )
+            self.Geometry_Picker( cx+dx-cpx-cp_cx, cy+dy-cpy-cp_cy, ww, wh )
             # Toggle Visibility
-            check_visible = self.color_picker.isVisible()
+            check_visible = self.ui_color_picker.isVisible()
             if check_visible == False:
-                self.color_picker.setVisible( True )
+                self.ui_color_picker.setVisible( True )
             else:
-                self.color_picker.setVisible( False )
-    def Picker_Geometry( self, px, py, ww, wh ):
-        self.color_picker.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
+                self.ui_color_picker.setVisible( False )
+    def Geometry_Picker( self, px, py, ww, wh ):
+        self.ui_color_picker.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
 
     #endregion
     #region ToolBox
 
+    # Animation
+    def Update_Cycle( self ):
+        try:check_canvas = self.Check_Canvas()
+        except:check_canvas = False
+        if check_canvas == True:
+            # Read
+            ki = Krita.instance()
+            ad = ki.activeDocument()
+            # Timelines
+            if self.show_animation == True:
+                # Read
+                anim_ctime = ad.currentTime()
+                anim_stime = ad.playBackStartTime()
+                anim_etime = ad.playBackEndTime()
+                self.anim_delta = anim_stime
+                # Update
+                if self.anim_ctime != anim_ctime or self.anim_stime != anim_stime or self.anim_etime != anim_etime:
+                    self.anim_ctime = anim_ctime
+                    self.anim_stime = anim_stime
+                    self.anim_etime = anim_etime
+                    self.anim_timeline.blockSignals( True )
+                    self.anim_timeline.setValue( self.anim_ctime - self.anim_delta )
+                    self.anim_timeline.setMinimum( self.anim_stime - self.anim_delta )
+                    self.anim_timeline.setMaximum( self.anim_etime - self.anim_delta )
+                    self.anim_timeline.blockSignals( False )
+            # Information
+            # if self.menu_information.isChecked() == True:
+            #     self.Information_Read()
+            # Guides
+            if self.menu_guide.isChecked() == True:
+                # Read Document
+                guide_config = ad.guidesConfig()
+                guide_list_h = guide_config.horizontalGuides()
+                guide_list_v = guide_config.verticalGuides()
+                guide_ruler = ki.action( "view_ruler" ).isChecked()
+                guide_show = ki.action( "view_show_guides" ).isChecked()
+                guide_snap = ki.action( "view_snap_to_guides" ).isChecked()
+                guide_lock = ki.action( "view_lock_guides" ).isChecked()
+                # Correct lists error range
+                for i in range( 0, len( guide_list_h ) ):
+                    guide_list_h[i] = round( guide_list_h[i] )
+                for i in range( 0, len( guide_list_v ) ):
+                    guide_list_v[i] = round( guide_list_v[i] )
+                guide_list_h.sort()
+                guide_list_v.sort()
+                # Update Document
+                if self.guide_list_h != guide_list_h:
+                    self.Guide_UI_List_H( guide_list_h )
+                if self.guide_list_v != guide_list_v:
+                    self.Guide_UI_List_V( guide_list_v )
+                if self.guide_ruler != guide_ruler:
+                    self.guide_ruler = guide_ruler
+                    self.Guide_Ruler( guide_ruler )
+                    self.Guide_UI_Ruler( guide_ruler )
+                if self.guide_show != guide_show:
+                    self.guide_show = guide_show
+                    self.Guide_Show( guide_show )
+                    self.Guide_UI_Show( guide_show )
+                if self.guide_snap != guide_snap:
+                    self.guide_snap = guide_snap
+                    self.Guide_Snap( guide_snap )
+                    self.Guide_UI_Snap( guide_snap )
+                if self.guide_lock != guide_lock:
+                    self.guide_lock = guide_lock
+                    self.Guide_Lock( guide_lock )
+                    self.Guide_UI_Lock( guide_lock )
+    def Animation_Frame( self ):
+        # Active Document
+        document = Krita.instance().activeDocument()
+        # Animation Correction
+        return_list = self.Read_Nodes( document )
+        animation = False
+        for i in range( 0, len( return_list ) ):
+            animation = return_list[i].animated()
+            if animation == True:
+                self.Message_Float( "ANIMATION CLEANUP", f"Document has animation hence no action was taken", self.icon_anim_cleanup )
+                break
+        if animation == False:
+            self.Message_Float( "ANIMATION CLEANUP", f"Document animation range was set to zero", self.icon_anim_cleanup )
+            document.setFullClipRangeStartTime( 0 )
+            document.setFullClipRangeEndTime( 0 )
+    def Read_Nodes( self, document ):
+        # Document
+        top_nodes = document.topLevelNodes()
+        # Top level Nodes
+        new_nodes = list()
+        for i in range( 0, len( top_nodes ) ):
+            new_nodes.append( top_nodes[i] )
+        # Variables
+        check_again = True
+        counter = 0
+        node_dic = { 0 : new_nodes }
+        # Infinite Cycle
+        while check_again == True:
+            # layer read
+            new_nodes = list()
+            nodes = node_dic[counter]
+            # Layer Level
+            for i in range( 0, len( nodes ) ):
+                try:
+                    child_nodes = nodes[i].childNodes()
+                    if len( child_nodes ) > 0:
+                        for cn in range( 0, len( child_nodes ) ):
+                            new_nodes.append( child_nodes[cn] )
+                except:
+                    pass
+            # cycle control
+            if len( new_nodes ) == 0:
+                check_again = False
+            else:
+                counter += 1
+                node_dic[counter] = new_nodes
+        # Return List
+        return_list = list()
+        for i in range( 0, len( node_dic ) ):
+            for j in range( 0, len( node_dic[i] ) ):
+                node = node_dic[i][j]
+                return_list.append( node )
+        return return_list
+
     # Krita
     def Hold_Krita( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Krita )
+        self.Timer_Start( self.Menu_Krita )
     def Release_Krita( self ):
         self.Menu_Reset()
     def Menu_Krita( self ):
@@ -1090,10 +1386,10 @@ class Tela_Extension( Extension ):
         canvas_wrap = ki.action( "wrap_around_mode" ).isChecked()
         canvas_grid = ki.action( "view_pixel_grid" ).isChecked()
         # Read Guides
-        guides_ruler = ki.action( "view_ruler" ).isChecked()
-        guides_snap = ki.action( "view_snap_to_guides" ).isChecked()
-        guides_show = ad.guidesVisible()
-        guides_lock = ad.guidesLocked()
+        guide_ruler = ki.action( "view_ruler" ).isChecked()
+        guide_snap = ki.action( "view_snap_to_guides" ).isChecked()
+        guide_show = ad.guidesVisible()
+        guide_lock = ad.guidesLocked()
         # Read View
         view_painting_assistant = ki.action( "view_toggle_painting_assistants" ).isChecked()
         view_assitant_preview = ki.action( "view_toggle_assistant_previews" ).isChecked()
@@ -1118,20 +1414,6 @@ class Tela_Extension( Extension ):
         action_canvas_wrap.setCheckable( True )
         action_canvas_mirror.setChecked( canvas_mirror )
         action_canvas_wrap.setChecked( canvas_wrap )
-        # Guides
-        menu_guides = self.qmenu.addMenu( "Guides" )
-        action_guides_ruler = menu_guides.addAction( "Ruler" )
-        action_guides_snap = menu_guides.addAction( "Snap" )
-        action_guides_show = menu_guides.addAction( "Show" )
-        action_guides_lock = menu_guides.addAction( "Lock" )
-        action_guides_ruler.setCheckable( True )
-        action_guides_snap.setCheckable( True )
-        action_guides_show.setCheckable( True )
-        action_guides_lock.setCheckable( True )
-        action_guides_ruler.setChecked( guides_ruler )
-        action_guides_snap.setChecked( guides_snap )
-        action_guides_show.setChecked( guides_show )
-        action_guides_lock.setChecked( guides_lock )
         # View
         menu_view = self.qmenu.addMenu( "View" )
         action_view_painting_assistant = menu_view.addAction( "Painting Assistant" )
@@ -1162,11 +1444,6 @@ class Tela_Extension( Extension ):
         # Canvas
         if action == action_canvas_mirror:              self.Canvas_Mirror()
         if action == action_canvas_wrap:                self.Canvas_Wrap()
-        # Guides
-        if action == action_guides_ruler:               self.Guides_Ruler()
-        if action == action_guides_snap:                self.Guides_Snap()
-        if action == action_guides_show:                self.Guides_Show()
-        if action == action_guides_lock:                self.Guides_Lock()
         # View
         if action == action_view_painting_assistant:    self.View_Painting_Assistant()
         if action == action_view_assitant_preview:      self.View_Assistant_Preview()
@@ -1179,7 +1456,7 @@ class Tela_Extension( Extension ):
     # Break
     def Hold_Break( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Break )
+        self.Timer_Start( self.Menu_Break )
     def Release_Break( self ):
         self.Menu_Reset()
     def Menu_Break( self ):
@@ -1187,11 +1464,15 @@ class Tela_Extension( Extension ):
         widget = self.menu_break
         # Menu
         self.qmenu = QMenu()
-        # State
+        # Animation
+        action_show_animation = self.qmenu.addAction( "Show Animation" )
+        action_show_animation.setCheckable( True )
+        action_show_animation.setChecked( self.show_animation )
+        # Option
         action_show_option = self.qmenu.addAction( "Show Option" )
         action_show_option.setCheckable( True )
         action_show_option.setChecked( self.show_option )
-        # Layers
+        # Extra
         action_show_extra = self.qmenu.addAction( "Show Extra" )
         action_show_extra.setCheckable( True )
         action_show_extra.setChecked( self.show_extra )
@@ -1203,7 +1484,8 @@ class Tela_Extension( Extension ):
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
         action = self.qmenu.exec_( point )
-        # State
+        # Action
+        if action == action_show_animation: self.Show_Animation( not self.show_animation )
         if action == action_show_option:    self.Show_Option( not self.show_option )
         if action == action_show_extra:     self.Show_Extra( not self.show_extra )
         # Clean up
@@ -1212,75 +1494,80 @@ class Tela_Extension( Extension ):
     # Hold
     def Hold_Vector( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Vector )
+        self.Timer_Start( self.Menu_Vector )
     def Hold_Brush( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Brush )
+        self.Timer_Start( self.Menu_Brush )
     def Hold_Transform( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Transform )
+        self.Timer_Start( self.Menu_Transform )
     def Hold_Color( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Color )
+        self.Timer_Start( self.Menu_Color )
     def Hold_Overlay( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Overlay )
+        self.Timer_Start( self.Menu_Overlay )
     def Hold_Select( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Select )
+        self.Timer_Start( self.Menu_Select )
     def Hold_Camera( self ):
         self.Menu_Reset()
-        self.Menu_Timer_Start( self.Menu_Camera )
+        self.Timer_Start( self.Menu_Camera )
         
     # Release
     def Release_Vector( self ):
         self.Menu_Reset()
         self.action_tool_vector.setChecked( True )
         Krita.instance().action( self.operation["vector"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Brush( self ):
         self.Menu_Reset()
         self.action_tool_brush.setChecked( True )
         Krita.instance().action( self.operation["brush"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Transform( self ):
         self.Menu_Reset()
         self.action_tool_transform.setChecked( True )
         Krita.instance().action( self.operation["transform"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Color( self ):
         self.Menu_Reset()
         self.action_tool_color.setChecked( True )
         Krita.instance().action( self.operation["color"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Overlay( self ):
         self.Menu_Reset()
         self.action_tool_overlay.setChecked( True )
         Krita.instance().action( self.operation["overlay"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Select( self ):
         self.Menu_Reset()
         self.action_tool_select.setChecked( True )
         Krita.instance().action( self.operation["select"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
     def Release_Camera( self ):
         self.Menu_Reset()
         self.action_tool_camera.setChecked( True )
         Krita.instance().action( self.operation["camera"] ).trigger()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
 
-    # Menu
-    def Menu_Timer_Start( self, function ):
+    # Timer
+    def Timer_Start( self, function ):
         self.menu_hold = QtCore.QTimer()
         self.menu_hold.setSingleShot( True )
         self.menu_hold.setInterval( self.press_time )
         self.menu_hold.timeout.connect( function )
         self.menu_hold.start()
+    def Timer_Stop( self ):
+        try:self.menu_hold.stop()
+        except:pass
+
+    # Menu
     def Menu_Reset( self ):
-        self.Menu_Timer_Stop()
+        self.Timer_Stop()
         self.Menu_Clear()
-        self.color_picker.hide()
-        # Actions
+        self.Menu_Check()
+    def Menu_Check( self ):
         self.action_tool_vector.setChecked( False )
         self.action_tool_brush.setChecked( False )
         self.action_tool_transform.setChecked( False )
@@ -1288,16 +1575,9 @@ class Tela_Extension( Extension ):
         self.action_tool_overlay.setChecked( False )
         self.action_tool_select.setChecked( False )
         self.action_tool_camera.setChecked( False )
-    def Menu_Timer_Stop( self ):
-        try:self.menu_hold.stop()
-        except:pass
-    def Menu_Clear( self ):
-        try:self.qmenu.clear()
-        except:pass
     def Menu_Down( self ):
-        # Krita
-        self.menu_krita.setDown( False )
         # Toolbox
+        self.menu_krita.setDown( False )
         self.menu_vector.setDown( False )
         self.menu_brush.setDown( False )
         self.menu_transform.setDown( False )
@@ -1305,9 +1585,21 @@ class Tela_Extension( Extension ):
         self.menu_overlay.setDown( False )
         self.menu_select.setDown( False )
         self.menu_camera.setDown( False )
+        self.menu_break.setDown( False )
         # Other
         self.menu_mirror_fix.setDown( False )
-        self.menu_color_picker.setDown( False )
+    def Menu_Hide( self ):
+        self.ui_color_picker.hide()
+        self.ui_information.hide()
+        self.ui_guide.hide()
+    def Menu_False( self ):
+        self.menu_color_picker.setChecked( False )
+        self.menu_information.setChecked( False )
+        self.menu_guide.setChecked( False )
+    def Menu_Clear( self ):
+        try:self.qmenu.clear()
+        except:pass
+
     # Menu
     def Menu_Vector( self ):
         self.Menu_Toolbox( "vector", self.menu_vector )
@@ -1373,17 +1665,28 @@ class Tela_Extension( Extension ):
 
         # Clean up
         self.Menu_Down()
-        self.Tela_Geometry( self.show_option, self.show_extra, self.hide_tela )
+        self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
 
     # Progress Bar
     def Progress_Bar( self, value ):
-        if value >= 99:
-            value = 0
+        if value >= 99: value = 0
         self.progress_bar.setValue( int( value ) )
 
     #endregion
     #region Actions
 
+    # Animation
+    def Animation_Play( self, boolean ):
+        Krita.instance().action( "toggle_playback" ).trigger()
+    def Animation_Onion( self ):
+        Krita.instance().action( "toggle_onion_skin" ).trigger()
+    def Animation_Cache( self ):
+        Krita.instance().action( "clear_animation_cache" ).trigger()
+        self.Message_Float( "ANIMATION", f"Animation cache cleared", self.icon_anim_cleanup )
+    def Animation_Time( self, time ):
+        Krita.instance().activeDocument().setCurrentTime( time + self.anim_delta )
+
+    # Transform
     def Transform_Free( self ):
         Krita.instance().action( "KisToolTransformFree" ).trigger()
     def Transform_Perspective( self ):
@@ -1427,14 +1730,14 @@ class Tela_Extension( Extension ):
     def Canvas_Wrap( self ):
         Krita.instance().action( "wrap_around_mode" ).trigger()
     # Guides
-    def Guides_Ruler( self ):
-        Krita.instance().action( "view_ruler" ).trigger()
-    def Guides_Snap( self ):
-        Krita.instance().action( "view_snap_to_guides" ).trigger()
-    def Guides_Show( self ):
-        Krita.instance().action( "view_show_guides" ).trigger()
-    def Guides_Lock( self ):
-        Krita.instance().action( "view_lock_guides" ).trigger()
+    def Guide_Ruler( self, boolean ):
+        Krita.instance().action( "view_ruler" ).setChecked( boolean )
+    def Guide_Snap( self, boolean ):
+        Krita.instance().action( "view_snap_to_guides" ).setChecked( boolean )
+    def Guide_Show( self, boolean ):
+        Krita.instance().action( "view_show_guides" ).setChecked( boolean )
+    def Guide_Lock( self, boolean ):
+        Krita.instance().action( "view_lock_guides" ).setChecked( boolean )
     # View
     def View_Painting_Assistant( self ):
         Krita.instance().action( "view_toggle_painting_assistants" ).trigger()
@@ -1450,7 +1753,7 @@ class Tela_Extension( Extension ):
     #region Export Selection
 
     def Export_Selection( self ):
-        if ( ( self.canvas() != None ) and ( self.canvas().view() != None ) ):
+        if ( self.canvas() != None ) and ( self.canvas().view() != None ):
             # File
             file_dialog = QFileDialog( QWidget( self ) )
             file_dialog.setFileMode( QFileDialog.FileMode.AnyFile )
@@ -1493,12 +1796,726 @@ class Tela_Extension( Extension ):
         qimage_scale.save( save_path )
 
     #endregion
-    #region Mirror Fix
+    #region Information
 
-    def MirrorFix_Explanation( self ):
-        self.Menu_Reset()
-        self.Message_Float( "MIRROR FIX", f"Press and hold LMB then do a vertical or horizontal drag and release", self.icon_mirrorfix )
-        self.Menu_Clear()
+    def Information_Read( self ):
+        # Block Signals
+        self.Information_Block_Signals( True )
+
+        #region Variables
+
+        # File
+        self.file_name = str()
+        self.file_version = str()
+        # XML Document
+        self.xml_title = str()
+        self.xml_description = str()
+        self.xml_subject = str()
+        self.xml_keyword = str()
+        self.xml_license = str()
+        # XML Time
+        self.xml_date = str()
+        self.xml_creation_date = str()
+        self.xml_editing_time = str()
+        self.xml_editing_cycles = str()
+        # XML Author
+        self.xml_full_name = str() # Nickname
+        self.xml_creator_first_name = str()
+        self.xml_creator_last_name = str()
+        self.xml_initial = str()
+        self.xml_author_title = str()
+        self.xml_position = str()
+        self.xml_company = str()
+        self.xml_contact = list()
+        # Time
+        self.info_date = str()
+        self.info_creation_date = str()
+        self.info_editing_time = str()
+        self.info_delta_creation = str()
+        self.info_name = str()
+        # Redacted from UI
+        self.xml_abstract = str()
+        self.xml_language = str()
+        self.xml_initial_creator = str()
+
+        #endregion 
+        #region Canvas
+
+        # Active Document is Open
+        try:check_canvas = self.Check_Canvas()
+        except:check_canvas = False
+        if check_canvas == True:
+            # Active Document
+            ki = Krita.instance()
+            ad = ki.activeDocument()
+            document_info = ad.documentInfo()
+
+            # File
+            path = ad.fileName()
+            self.file_name = str( os.path.basename( path ) )
+            try:
+                target = "maindoc.xml"
+                if zipfile.is_zipfile( path ):
+                    archive = zipfile.ZipFile( path, "r" )
+                    archive_open = archive.open( target )
+                    ET = xml.etree.ElementTree
+                    tree = ET.parse( archive_open )
+                    root = tree.getroot()
+                    attrib = root.attrib
+                    self.file_version = attrib["kritaVersion"]
+            except:
+                pass
+            # XML Data
+            ET = xml.etree.ElementTree
+            root = ET.fromstring( document_info )
+            for group in root:
+                for item in group:
+                    # read
+                    tag = item.tag.replace( "{http://www.calligra.org/DTD/document-info}", "" )
+                    text = item.text
+                    if text == None :
+                        text = ""
+                    # XML Document
+                    if   tag == "title" :               self.xml_title = text
+                    elif tag == "description" :         self.xml_description = text
+                    elif tag == "subject" :             self.xml_subject = text
+                    elif tag == "abstract" :            self.xml_abstract = text
+                    elif tag == "keyword" :             self.xml_keyword = text
+                    elif tag == "language" :            self.xml_language = text
+                    elif tag == "license" :             self.xml_license = text
+                    # XML Time
+                    elif tag == "date" :                self.xml_date = text
+                    elif tag == "creation-date" :       self.xml_creation_date = text
+                    elif tag == "editing-time" :        self.xml_editing_time = text
+                    elif tag == "editing-cycles" :      self.xml_editing_cycles = text
+                    # XML Author
+                    elif tag == "initial-creator" :     self.xml_initial_creator = text
+                    elif tag == "full-name" :           self.xml_full_name = text
+                    elif tag == "creator-first-name" :  self.xml_creator_first_name = text
+                    elif tag == "creator-last-name" :   self.xml_creator_last_name = text
+                    elif tag == "initial" :             self.xml_initial = text
+                    elif tag == "author-title" :        self.xml_author_title = text
+                    elif tag == "position" :            self.xml_position = text
+                    elif tag == "company" :             self.xml_company = text
+                    elif tag == "contact" :             self.xml_contact.append( text )
+
+            # Time Calculations
+            self.info_date = self.Display_Date( self.xml_date )
+            self.info_creation_date = self.Display_Date( self.xml_creation_date )
+            if self.xml_editing_time != "":
+                self.info_editing_time = self.Time_to_String( self.Cycles_to_Time( int( self.xml_editing_time ) ) )
+            if self.info_creation_date != "":
+                self.info_delta_creation = self.Time_Delta(
+                    int( self.info_creation_date[0:4] ),
+                    int( self.info_creation_date[5:7] ),
+                    int( self.info_creation_date[8:10] ),
+                    int( self.info_creation_date[11:13] ),
+                    int( self.info_creation_date[14:16] ),
+                    int( self.info_creation_date[17:19] ),
+                    int( self.info_date[0:4] ),
+                    int( self.info_date[5:7] ),
+                    int( self.info_date[8:10] ),
+                    int( self.info_date[11:13] ),
+                    int( self.info_date[14:16] ),
+                    int( self.info_date[17:19] ),
+                    )
+            # Money Calculation ( Edit time avoids idle inflation cost )
+            if self.xml_editing_time != "":     self.Money_Cost( self.Cycle_to_Hour( self.xml_editing_time ) )
+            else:                               self.Money_Cost( 0 )
+            # Author Variables
+            self.info_name = self.xml_creator_first_name + " " + self.xml_creator_last_name
+
+        #endregion
+        #region Interface
+
+        # Document
+        self.ui_information.info_file_name.setText( self.file_name )
+        self.ui_information.info_file_version.setText( self.file_version )
+        # Header
+        self.ui_information.info_title.setText( self.xml_title )
+        self.ui_information.info_description.setText( self.xml_abstract ) # Abstract is Description inside Krita
+        self.ui_information.info_subject.setText( self.xml_subject )
+        self.ui_information.info_keyword.setText( self.xml_keyword )
+        self.ui_information.info_license.setText( self.xml_license )
+        # Time
+        self.ui_information.info_date.setText( self.info_date )
+        self.ui_information.info_creation.setText( self.info_creation_date + self.info_delta_creation )
+        self.ui_information.info_edit_time.setText( str( self.xml_editing_time ) + str( self.info_editing_time ) )
+        self.ui_information.info_edit_cycles.setText( str( self.xml_editing_cycles ) )
+        # Author
+        self.ui_information.info_nick_name.setText( self.xml_full_name )
+        self.ui_information.info_full_name.setText( self.info_name )
+        self.ui_information.info_initials.setText( self.xml_initial )
+        self.ui_information.info_author_title.setText( self.xml_author_title )
+        self.ui_information.info_position.setText( self.xml_position )
+        self.ui_information.info_company.setText( self.xml_company )
+        self.ui_information.info_contact.clear()
+        for contact in self.xml_contact:
+            self.ui_information.info_contact.addItem( str( contact ) )
+
+        #endregion
+
+        # Block Signals
+        self.Information_Block_Signals( False )
+    def Information_Save( self ):
+        # Active Document is Open
+        try:check_canvas = self.Check_Canvas()
+        except:check_canvas = False
+        if check_canvas == True:
+            # Read widgets
+            new_title = str( self.ui_information.info_title.text() )
+            new_description = str( self.ui_information.info_description.toPlainText() )  # Description is Abstract inside Krita
+            new_subject = str( self.ui_information.info_subject.text() )
+            new_keyword = str( self.ui_information.info_keyword.text() )
+            new_license = str( self.ui_information.info_license.text() )
+            # Contacts
+            list_contact = str()
+            len_contact = len( self.xml_contact )
+            for i in range( 0, len_contact ):
+                list_contact += f"  <contact>{ self.xml_contact[i] }</contact>\n"
+            # Document Info
+            info_string = ( 
+                f"<?xml version='1.0' encoding='UTF-8'?>\n"
+                f"<!DOCTYPE document-info PUBLIC '-//KDE//DTD document-info 1.1//EN' 'http://www.calligra.org/DTD/document-info-1.1.dtd'>\n"
+                f"<document-info xmlns='http://www.calligra.org/DTD/document-info'>\n"
+                f" <about>\n"
+                f"  <title>{ new_title }</title>\n"
+                f"  <description>{ self.xml_abstract }</description>\n"
+                f"  <subject>{ new_subject }</subject>\n"
+                f"  <abstract><![CDATA[{ new_description }]]></abstract>\n"
+                f"  <keyword>{ new_keyword }</keyword>\n"
+                f"  <initial-creator>{ self.xml_initial_creator }</initial-creator>\n"
+                f"  <language>{ self.xml_language }</language>\n"
+                f"  <license>{ new_license }</license>\n"
+                f" </about>\n"
+                f" <author>\n"
+                f"  <full-name>{ self.xml_full_name }</full-name>\n"
+                f"  <creator-first-name>{ self.xml_creator_first_name }</creator-first-name>\n"
+                f"  <creator-last-name>{ self.xml_creator_last_name }</creator-last-name>\n"
+                f"  <initial>{ self.xml_initial } </initial>\n"
+                f"  <author-title>{ self.xml_author_title }</author-title>\n"
+                f"  <position>{ self.xml_position }</position>\n"
+                f"  <company>{ self.xml_company }</company>\n"
+                f"{ list_contact }"
+                f" </author>\n"
+                f"</document-info>" )
+            text = Krita.instance().activeDocument().setDocumentInfo( info_string )
+            # Reconstruct Items
+            self.ui_information.info_contact.clear()
+            for i in range( 0, len_contact ):
+                self.ui_information.info_contact.addItem( str( self.xml_contact[i] ) )
+    def Information_Copy( self, item ):
+        contact = item.text()
+        if contact != "":
+            QApplication.clipboard().setText( contact )
+
+    def Information_Block_Signals( self, boolean ):
+        self.ui_information.info_title.blockSignals( boolean )
+        self.ui_information.info_description.blockSignals( boolean )
+        self.ui_information.info_subject.blockSignals( boolean )
+        self.ui_information.info_keyword.blockSignals( boolean )
+        self.ui_information.info_license.blockSignals( boolean )
+
+    def Cycles_to_Time( self, cycles ):
+        # Variables
+        year = 0
+        month = 0
+        day = 0
+        hour = 0
+        minute = 0
+        second = 0
+        # Checks
+        if ( cycles != "" and cycles != 0 and cycles != None ):
+            cycles = int( cycles )
+            while cycles >= sec_ano:        year += 1;      cycles -= sec_ano
+            while cycles >= sec_mes:        month += 1;     cycles -= sec_mes
+            while cycles >= sec_dia:        day += 1;       cycles -= sec_dia
+            while cycles >= sec_hora:       hour += 1;      cycles -= sec_hora
+            while cycles >= sec_minuto:     minute += 1;    cycles -= sec_minuto
+            second = int( cycles )
+        # Return
+        time = [ year, month, day, hour, minute, second ]
+        return time
+    def Time_to_String( self, time ):
+        # Variables
+        aa = time[0]
+        mo = time[1]
+        dd = time[2]
+        hh = time[3]
+        mi = time[4]
+        ss = time[5]
+        # string constants
+        suffix = str()
+        seconds = str()
+        minutes = str()
+        hours = str()
+        days = str()
+        months = str()
+        years = str()
+        # strings
+        if ( aa>0 or mo>0 or dd>0 or hh>0 or mi>0 or ss>0 ):
+            suffix = " >> "
+        if aa > 0:
+            years = str( aa ).zfill( 1 ) + "Y "
+        if mo > 0:
+            months = str( mo ).zfill( 2 ) + "M "
+        if dd > 0:
+            days = str( dd ).zfill( 2 ) + "D "
+        if hh > 0:
+            hours = str( hh ).zfill( 2 ) + "h "
+        if mi > 0:
+            minutes = str( mi ).zfill( 2 ) + "m "
+        if ss > 0:
+            seconds = str( ss ).zfill( 2 ) + "s"
+        # string missing
+        if ( mo==0 and aa>0 ):
+            months = "00M "
+        if ( dd==0 and ( aa>0 or mo>0 ) ):
+            days = "00D "
+        if ( hh==0 and ( aa>0 or mo>0 or dd>0 ) ):
+            hours = "00h "
+        if ( mi==0 and ( aa>0 or mo>0 or dd>0 or hh>0 ) ):
+            minutes = "00m "
+        if ( ss==0 and ( aa>0 or mo>0 or dd>0 or hh>0 or ss>0 ) ):
+            seconds = "00s"
+        # return
+        string = suffix + years + months + days + hours + minutes + seconds
+        return string
+    def Display_Date( self, date ):
+        if ( date != "" and date != None ):
+            numbers = date.replace( "T", " " )
+            string = numbers
+        else:
+            string = ""
+        return string
+    def Time_Delta( self, year1, month1, day1, hour1, minute1, second1, year2, month2, day2, hour2, minute2, second2 ):
+        date_start = datetime.datetime( year1, month1, day1, hour1, minute1, second1 )
+        date_now = datetime.datetime( year2, month2, day2, hour2, minute2, second2 )
+        delta = date_now - date_start
+        string = self.Time_to_String( self.Cycles_to_Time( ( delta.days * 86400 ) + delta.seconds ) )
+        return string
+
+    def Cycle_to_Hour( self, cycles ):
+        # Variables
+        hour = 0
+        # Checks
+        if ( cycles != "" and cycles != 0 and cycles != None ):
+            cycles = int( cycles )
+            while cycles >= sec_hora:
+                hour += 1
+                cycles -= sec_hora
+            resto = cycles / sec_hora
+            work_hours = hour + resto
+        else:
+            work_hours = 0
+        return work_hours
+    def Money_Cost( self, work_hours ):
+        # Variables
+        self.work_hours = work_hours
+        rate = self.ui_information.menu_money_rate.value()
+        # Calculations
+        total = rate * self.work_hours
+        # Signals
+        self.Money_Block_Signals( True )
+        self.ui_information.menu_money_total.setValue( total )
+        self.Money_Block_Signals( False )
+    def Money_Rate( self, rate ):
+        total = rate * self.work_hours
+        # Signals
+        self.Money_Block_Signals( True )
+        self.ui_information.menu_money_total.setValue( total )
+        self.Money_Block_Signals( False )
+    def Money_Total( self, total ):
+        if self.work_hours > 0:
+            rate = total / self.work_hours
+        else:
+            rate = 0
+        # Signals
+        self.Money_Block_Signals( True )
+        self.ui_information.menu_money_rate.setValue( rate )
+        self.Money_Block_Signals( False )
+    def Money_Block_Signals( self, boolean ):
+        self.ui_information.menu_money_rate.blockSignals( boolean )
+        self.ui_information.menu_money_total.blockSignals( boolean )
+
+    #endregion
+    #region Guide
+
+    def Guide_Mirror_Horizontal( self, boolean ):
+        self.guide_mirror_h = boolean
+        if boolean == True:
+            # Widget
+            self.ui_guide.guide_mirror_h.setText( "Horizontal [Mirror]" )
+            # document
+            height = Krita.instance().activeDocument().height()
+            h2 = height * 0.5
+            guide_mirror = set()
+            # Cycle
+            for i in range( 0, len( self.guide_list_h ) ):
+                # Entry
+                entry = self.guide_list_h[i]
+                guide_mirror.add( entry )
+                # Reflect
+                delta = entry - h2
+                if ( entry < h2 ) or ( entry > h2 ):
+                    reflect = h2 - delta
+                    guide_mirror.add( reflect )
+                # Set
+            guide_mirror = sorted( list( guide_mirror ) )
+            self.guide_list_h = guide_mirror.copy()
+        else:
+            self.ui_guide.guide_mirror_h.setText( "Horizontal" )
+        # Lists
+        self.Guide_UI_List_H( self.guide_list_h )
+    def Guide_Mirror_Vertical( self, boolean ):
+        self.guide_mirror_v = boolean
+        if boolean == True:
+            # Widget
+            self.ui_guide.guide_mirror_v.setText( "Vertical [Mirror]" )
+            # document
+            width = Krita.instance().activeDocument().width()
+            w2 = width * 0.5
+            guide_mirror = set()
+            # Cycle
+            for i in range( 0, len( self.guide_list_v ) ):
+                # Entry
+                entry = self.guide_list_v[i]
+                guide_mirror.add( entry )
+                # Reflect
+                delta = entry - w2
+                if ( entry < w2 ) or ( entry > w2 ):
+                    reflect = w2 + delta
+                    guide_mirror.add( reflect )
+                # Set
+            guide_mirror = sorted( list( guide_mirror ) )
+            self.guide_list_v = guide_mirror.copy()
+        else:
+            self.ui_guide.guide_mirror_v.setText( "Vertical" )
+        # Lists
+        self.Guide_UI_List_V( self.guide_list_v )
+
+    def Guide_Value_Horizontal( self ):
+        # Variables
+        ad = Krita.instance().activeDocument()
+        row = self.ui_guide.guide_list_h.currentRow()
+        item = self.ui_guide.guide_list_h.item( row )
+        height = ad.height()
+        # Item
+        if item is not None:
+            # Read
+            text = item.text()
+            # Inpute Request
+            title = f"Guide = { text }"
+            num_read = int( float( text ) )
+            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
+            number = self.Limit_Range( number, 0, height )
+            if ok == True:
+                # Apply Item
+                item = self.ui_guide.guide_list_h.item( row )
+                item.setText( str( number ) )
+                # Apply changed Guide to Krita
+                lista = self.guide_list_h.copy()
+                lista[row] = number
+                ad.setHorizontalGuides( lista ) # ad.guidesConfig().setHorizontalGuides( lista )
+    def Guide_Value_Vertical( self ):
+        # Variables
+        ad = Krita.instance().activeDocument()
+        row = self.ui_guide.guide_list_v.currentRow()
+        item = self.ui_guide.guide_list_v.item( row )
+        width = ad.width()
+        # Item
+        if item is not None:
+            # Read
+            text = item.text()
+            # Inpute Request
+            title = f"Guide = { text }"
+            num_read = int( float ( text ) )
+            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
+            number = self.Limit_Range( number, 0, width )
+            if ok == True:
+                # Apply Item
+                item = self.ui_guide.guide_list_v.item( row )
+                item.setText( str( number ) )
+                # Apply changed Guide to Krita
+                lista = self.guide_list_v.copy()
+                lista[row] = number
+                ad.setVerticalGuides( lista ) # ad.guidesConfig().setVerticalGuides( lista )
+
+    def Guide_UI_List_H( self, lista ):
+        # Krita
+        ad = Krita.instance().activeDocument()
+        # UI
+        self.ui_guide.guide_list_h.clear()
+        # Variables
+        len_guide = len( self.guide_list_h )
+        len_lista = len( lista )
+        # Changed
+        diff = None
+        if len_guide <= len_lista:
+            for i in range( 0, len_lista ):
+                if lista[i] not in self.guide_list_h:
+                    diff = i
+        # Mirror
+        if self.guide_mirror_h == True:
+            # Variables
+            height = ad.height()
+            h2 = height * 0.5
+            meio = len( lista ) * 0.5
+            # Cycle
+            for i in range( 0, len_lista ):
+                if lista[i] != h2:
+                    # Variables
+                    index = len_lista - 1 - i
+                    delta1 = lista[i] - h2
+                    delta2 = lista[index] - h2
+                    invert = h2 - delta1
+                    # State
+                    if len_guide == len_lista: # Equal
+                        if delta1 != delta2:
+                            if self.guide_list_h[i] != lista[i]:
+                                lista[index] = self.Limit_Range( h2 - delta1, 0, height )
+                    if len_guide < len_lista: # Add
+                        if invert not in lista:
+                            lista.append( invert )
+                            break
+                    if len_guide > len_lista: # Subtract
+                        if invert not in lista:
+                            lista.pop( i )
+                            break
+            lista.sort()
+        # Prepare for next Cycle
+        self.guide_list_h = lista.copy()
+        # Apply to Krita
+        ad.setHorizontalGuides( self.guide_list_h ) # ad.guidesConfig().setHorizontalGuides( self.guide_list_h )
+        # Widget List
+        for value in lista:
+            item = QListWidgetItem( str( value ) )
+            self.ui_guide.guide_list_h.addItem( item )
+        if diff != None:
+            self.ui_guide.guide_list_h.setCurrentRow( diff )
+    def Guide_UI_List_V( self, lista ):
+        # Krita
+        ad = Krita.instance().activeDocument()
+        # UI
+        self.ui_guide.guide_list_v.clear()
+        # Variables
+        len_guide = len( self.guide_list_v )
+        len_lista = len( lista )
+        # Changed
+        diff = None
+        if len_guide <= len_lista:
+            for i in range( 0, len_lista ):
+                if lista[i] not in self.guide_list_v:
+                    diff = i
+        # Mirror
+        if self.guide_mirror_v == True:
+            # Variables
+            width = ad.width()
+            w2 = width * 0.5
+            meio = len( lista ) * 0.5
+            # Cycle
+            for i in range( 0, len_lista ):
+                if lista[i] != w2:
+                    # Variables
+                    index = len_lista - 1 - i
+                    delta1 = lista[i] - w2
+                    delta2 = lista[index] - w2
+                    invert = w2 - delta1
+                    # State
+                    if len_guide == len_lista: # Equal
+                        if delta1 != delta2:
+                            if self.guide_list_v[i] != lista[i]:
+                                lista[index] = self.Limit_Range( w2 - delta1, 0, width )
+                    if len_guide < len_lista: # Add
+                        if invert not in lista:
+                            lista.append( invert )
+                            break
+                    if len_guide > len_lista: # Subtract
+                        if invert not in lista:
+                            lista.pop( i )
+                            break
+            lista.sort()
+        # Prepare for next Cycle
+        self.guide_list_v = lista.copy()
+        # Apply to Krita
+        ad.setVerticalGuides( self.guide_list_v ) # ad.guidesConfig().setVerticalGuides( self.guide_list_v )
+        # Widget List
+        for value in lista:
+            item = QListWidgetItem( str( value ) )
+            self.ui_guide.guide_list_v.addItem( item )
+        if diff != None:
+            self.ui_guide.guide_list_v.setCurrentRow( diff )
+
+    def Guide_UI_Ruler( self, boolean ):
+        self.ui_guide.guide_ruler.setChecked( boolean )
+    def Guide_UI_Show( self, boolean ):
+        self.ui_guide.guide_show.setChecked( boolean )
+    def Guide_UI_Snap( self, boolean ):
+        self.ui_guide.guide_snap.setChecked( boolean )
+    def Guide_UI_Lock( self, boolean ):
+        self.ui_guide.guide_lock.setChecked( boolean )
+
+    #endregion
+    #region Color Picker
+
+    # Module
+    def Import_Pigment_O( self ):
+        try:
+            # Tela
+            self.menu_color_picker.setEnabled( False )
+            # Krita
+            ki = Krita.instance()
+            docker_list = ki.dockers()
+            for docker in docker_list:
+                if docker.objectName() == self.pigmento_picker_pyid:
+                    # Variables
+                    self.pigmento_picker = docker
+                    # Styling
+                    self.menu_color_picker.setEnabled( True )
+                    self.menu_color_picker.setIcon( ki.icon( "krita_tool_ellipse" ) )
+                    break
+        except:
+            pass
+
+    # Color Panel
+    def Color_Panel_Preview( self, lista ):
+        self.Color_Sliders_READ( lista[0], lista[1], lista[2] )
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, False )
+    def Color_Panel_Apply( self, lista ):
+        self.Color_Sliders_READ( lista[0], lista[1], lista[2] )
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, True )
+
+    # Sliders Read
+    def CS1_R( self, value ):
+        self.s1 = value
+        self.ui_color_picker.s1.blockSignals( True )
+        self.ui_color_picker.s1.setValue( int( self.s1 * self.hue ) )
+        self.ui_color_picker.s1.blockSignals( False )
+    def CS2_R( self, value ):
+        self.s2 = value
+        self.ui_color_picker.s2.blockSignals( True )
+        self.ui_color_picker.s2.setValue( int( self.s2 * self.svl ) )
+        self.ui_color_picker.s2.blockSignals( False )
+    def CS3_R( self, value ):
+        self.s3 = value
+        self.ui_color_picker.s3.blockSignals( True )
+        self.ui_color_picker.s3.setValue( int( self.s3 * self.svl ) )
+        self.ui_color_picker.s3.blockSignals( False )
+    def Color_Sliders_READ( self, s1, s2, s3 ):
+        self.s1 = s1
+        self.s2 = s2
+        self.s3 = s3
+        self.ui_color_picker.s1.blockSignals( True )
+        self.ui_color_picker.s2.blockSignals( True )
+        self.ui_color_picker.s3.blockSignals( True )
+        self.ui_color_picker.s1.setValue( int( self.s1 * self.hue ) )
+        self.ui_color_picker.s2.setValue( int( self.s2 * self.svl ) )
+        self.ui_color_picker.s3.setValue( int( self.s3 * self.svl ) )
+        self.ui_color_picker.s1.blockSignals( False )
+        self.ui_color_picker.s2.blockSignals( False )
+        self.ui_color_picker.s3.blockSignals( False )
+    # Sliders Write
+    def CS1_W( self, action ):
+        self.s1 = self.ui_color_picker.s1.value() / self.hue
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
+    def CS2_W( self, action ):
+        self.s2 = self.ui_color_picker.s2.value() / self.svl
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
+    def CS3_W( self, action ):
+        self.s3 = self.ui_color_picker.s3.value() / self.svl
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
+    def Color_Sliders_WRITE( self, s1, s2, s3 ):
+        self.s1 = s1 / self.hue
+        self.s2 = s2 / self.svl
+        self.s3 = s3 / self.svl
+        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3 )
+
+    # Read and Write
+    def Color_READ( self ):
+        if self.pigmento_picker != None:
+            # Read
+            self.cor = self.pigmento_picker.API_Request_FG()
+            wheel_space = self.pigmento_picker.API_Request_Wheel_Space()
+
+            # Wheel Space
+            if wheel_space != self.wheel_space:
+                # Variables
+                self.wheel_space = wheel_space
+                panel_path = self.directory_plugin.replace( "tela", "pigment_o\\PANEL")
+                zip_path = os.path.join( panel_path, f"SRGB_{ self.wheel_space }_S4.zip" )
+                # QPixmap List
+                self.qpixmap_list = self.Read_Zip( zip_path )
+                self.color_panel.Set_Gradient( self.qpixmap_list )
+
+            # Variables
+            hex6 = self.cor["display"]
+            if self.wheel_space == "HSV":
+                s1 = self.cor["hsv_1"]
+                s2 = self.cor["hsv_2"]
+                s3 = self.cor["hsv_3"]
+            elif self.wheel_space == "HSL":
+                s1 = self.cor["hsl_1"]
+                s2 = self.cor["hsl_2"]
+                s3 = self.cor["hsl_3"]
+            elif self.wheel_space == "HCY":
+                s1 = self.cor["hcy_1"]
+                s2 = self.cor["hcy_2"]
+                s3 = self.cor["hcy_3"]
+            elif self.wheel_space == "ARD":
+                s1 = self.cor["ard_1"]
+                s2 = self.cor["ard_2"]
+                s3 = self.cor["ard_3"]
+
+            # Preview
+            self.color_display.Set_Color( hex6 )
+            # Panel
+            self.color_panel.Set_Color( s1, s2, s3 )
+            # Sliders
+            self.Color_Sliders_READ( s1, s2, s3 )
+    def Color_WRITE( self, wheel_space, s1, s2, s3, action=True ):
+        # if self.pigmento_module != None:
+        if self.pigmento_picker != None:
+            # Pigment.O
+            if action == False: self.cor = self.pigmento_picker.API_Input_Preview( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
+            if action == True:  self.cor = self.pigmento_picker.API_Input_Apply( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
+            # Update
+            self.color_display.Set_Color( self.cor["display"] )
+            self.color_panel.Set_Color( s1, s2, s3 )
+
+    # Extras
+    def Color_BlockSignals( self, boolean ):
+        self.ui_color_picker.color_display.blockSignals( boolean )
+        self.ui_color_picker.color_panel.blockSignals( boolean )
+        self.ui_color_picker.s1.blockSignals( boolean )
+        self.ui_color_picker.s2.blockSignals( boolean )
+        self.ui_color_picker.s3.blockSignals( boolean )
+    def Read_Zip( self, url ):
+        list_qpixmap = list()
+        try:
+            if zipfile.is_zipfile( url ):
+                archive = zipfile.ZipFile( url, "r" )
+                name_list = archive.namelist()
+                name_list.sort()
+                for name in name_list:
+                    # Archive
+                    extract = archive.open( name )
+                    image_data = extract.read()
+                    # Buffer
+                    byte_array = QByteArray( image_data )
+                    buffer = QBuffer()
+                    buffer.setData( byte_array )
+                    buffer.open( QIODevice.OpenModeFlag.ReadOnly )
+                    # Image
+                    reader = QImageReader( buffer )
+                    qpixmap = QPixmap().fromImageReader( reader )
+                    list_qpixmap.append( qpixmap )
+        except Exception as e:
+            try:QtCore.qDebug( f"TELA | ERROR request failed\n{ e }" )
+            except:pass
+        return list_qpixmap
+
+    #endregion
+    #region Mirror Fix
 
     def MirrorFix_Side( self, SIGNAL_SIDE ):
         self.Menu_Reset()
@@ -1607,9 +2624,9 @@ class Tela_Extension( Extension ):
                     ad.setActiveNode( old_node )
                     self.Wait( ad )
                     # Clear
-                    ki.action( 'clear' ).trigger()
+                    ki.action( "clear" ).trigger()
             # De-Select
-            ki.action( 'deselect' ).trigger()
+            ki.action( "deselect" ).trigger()
 
             # Cycle
             for old_node in old_node_list:
@@ -1623,15 +2640,15 @@ class Tela_Extension( Extension ):
                     self.Wait( ad )
                     # Mirror
                     if ( side == "LEFT" or side == "RIGHT" ):
-                        ki.action( 'mirrorNodeX' ).trigger()
+                        ki.action( "mirrorNodeX" ).trigger()
                     if ( side == "TOP" or side == "DOWN" ):
-                        ki.action( 'mirrorNodeY' ).trigger()
+                        ki.action( "mirrorNodeY" ).trigger()
                     self.Wait( ad )
                     # Re-Order
-                    ki.action( 'move_layer_up' ).trigger()
+                    ki.action( "move_layer_up" ).trigger()
                     self.Wait( ad )
                     # Merge ( this solves a alpha compositing issue )
-                    ki.action( 'merge_layer' ).trigger()
+                    ki.action( "merge_layer" ).trigger()
                     self.Wait( ad )
                     # Merge
                     merge_node = ad.nodeByName( new_name )
@@ -1647,173 +2664,10 @@ class Tela_Extension( Extension ):
         active_document.waitForDone()
         active_document.refreshProjection()
 
-    #endregion
-    #region Color Picker
-
-    # Module
-    def Import_Pigment_O( self ):
-        try:
-            # Tela
-            self.menu_color_picker.setEnabled( False )
-            # Krita
-            ki = Krita.instance()
-            docker_list = ki.dockers()
-            for docker in docker_list:
-                if docker.objectName() == self.pigmento_picker_pyid:
-                    # Variables
-                    self.pigmento_picker = docker
-                    # Styling
-                    self.menu_color_picker.setEnabled( True )
-                    self.menu_color_picker.setIcon( ki.icon( "krita_tool_ellipse" ) )
-                    break
-        except:
-            pass
-    # Ui
-    def Show_Color_Picker( self ):
-        if self.color_picker.isVisible() == False:
-            self.Menu_Reset()
-            self.Size_Update()
-            self.Color_READ()
-            self.color_picker.show()
-        else:
-            self.color_picker.hide()
-
-    # Color Panel
-    def Color_Panel_Preview( self, lista ):
-        self.Color_Sliders_READ( lista[0], lista[1], lista[2] )
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, False )
-    def Color_Panel_Apply( self, lista ):
-        self.Color_Sliders_READ( lista[0], lista[1], lista[2] )
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, True )
-
-    # Sliders Read
-    def CS1_R( self, value ):
-        self.s1 = value
-        self.color_picker.s1.blockSignals( True )
-        self.color_picker.s1.setValue( int( self.s1 * self.hue ) )
-        self.color_picker.s1.blockSignals( False )
-    def CS2_R( self, value ):
-        self.s2 = value
-        self.color_picker.s2.blockSignals( True )
-        self.color_picker.s2.setValue( int( self.s2 * self.svl ) )
-        self.color_picker.s2.blockSignals( False )
-    def CS3_R( self, value ):
-        self.s3 = value
-        self.color_picker.s3.blockSignals( True )
-        self.color_picker.s3.setValue( int( self.s3 * self.svl ) )
-        self.color_picker.s3.blockSignals( False )
-    def Color_Sliders_READ( self, s1, s2, s3 ):
-        self.s1 = s1
-        self.s2 = s2
-        self.s3 = s3
-        self.color_picker.s1.blockSignals( True )
-        self.color_picker.s2.blockSignals( True )
-        self.color_picker.s3.blockSignals( True )
-        self.color_picker.s1.setValue( int( self.s1 * self.hue ) )
-        self.color_picker.s2.setValue( int( self.s2 * self.svl ) )
-        self.color_picker.s3.setValue( int( self.s3 * self.svl ) )
-        self.color_picker.s1.blockSignals( False )
-        self.color_picker.s2.blockSignals( False )
-        self.color_picker.s3.blockSignals( False )
-    # Sliders Write
-    def CS1_W( self, action ):
-        self.s1 = self.color_picker.s1.value() / self.hue
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
-    def CS2_W( self, action ):
-        self.s2 = self.color_picker.s2.value() / self.svl
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
-    def CS3_W( self, action ):
-        self.s3 = self.color_picker.s3.value() / self.svl
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3, action )
-    def Color_Sliders_WRITE( self, s1, s2, s3 ):
-        self.s1 = s1 / self.hue
-        self.s2 = s2 / self.svl
-        self.s3 = s3 / self.svl
-        self.Color_WRITE( self.wheel_space, self.s1, self.s2, self.s3 )
-
-    # Read and Write
-    def Color_READ( self ):
-        if self.pigmento_picker != None:
-            # Read
-            self.cor = self.pigmento_picker.API_Request_FG()
-            wheel_space = self.pigmento_picker.API_Request_Wheel_Space()
-
-            # Wheel Space
-            if wheel_space != self.wheel_space:
-                # Variables
-                self.wheel_space = wheel_space
-                panel_path = self.directory_plugin.replace( "tela", "pigment_o\\PANEL")
-                zip_path = os.path.join( panel_path, f"SRGB_{ self.wheel_space }_S4.zip" )
-                # QPixmap List
-                self.qpixmap_list = self.Read_Zip( zip_path )
-                self.color_panel.Set_Gradient( self.qpixmap_list )
-
-            # Variables
-            hex6 = self.cor["display"]
-            if self.wheel_space == "HSV":
-                s1 = self.cor["hsv_1"]
-                s2 = self.cor["hsv_2"]
-                s3 = self.cor["hsv_3"]
-            elif self.wheel_space == "HSL":
-                s1 = self.cor["hsl_1"]
-                s2 = self.cor["hsl_2"]
-                s3 = self.cor["hsl_3"]
-            elif self.wheel_space == "HCY":
-                s1 = self.cor["hcy_1"]
-                s2 = self.cor["hcy_2"]
-                s3 = self.cor["hcy_3"]
-            elif self.wheel_space == "ARD":
-                s1 = self.cor["ard_1"]
-                s2 = self.cor["ard_2"]
-                s3 = self.cor["ard_3"]
-
-            # Preview
-            self.color_display.Set_Color( hex6 )
-            # Panel
-            self.color_panel.Set_Color( s1, s2, s3 )
-            # Sliders
-            self.Color_Sliders_READ( s1, s2, s3 )
-    def Color_WRITE( self, wheel_space, s1, s2, s3, action=True ):
-        # if self.pigmento_module != None:
-        if self.pigmento_picker != None:
-            # Pigment.O
-            if action == False: self.cor = self.pigmento_picker.API_Input_Preview( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
-            if action == True:  self.cor = self.pigmento_picker.API_Input_Apply( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
-            # Update
-            self.color_display.Set_Color( self.cor["display"] )
-            self.color_panel.Set_Color( s1, s2, s3 )
-
-    # Extras
-    def Color_BlockSignals( self, boolean ):
-        self.color_picker.color_display.blockSignals( boolean )
-        self.color_picker.color_panel.blockSignals( boolean )
-        self.color_picker.s1.blockSignals( boolean )
-        self.color_picker.s2.blockSignals( boolean )
-        self.color_picker.s3.blockSignals( boolean )
-    def Read_Zip( self, url ):
-        list_qpixmap = list()
-        try:
-            if zipfile.is_zipfile( url ):
-                archive = zipfile.ZipFile( url, "r" )
-                name_list = archive.namelist()
-                name_list.sort()
-                for name in name_list:
-                    # Archive
-                    extract = archive.open( name )
-                    image_data = extract.read()
-                    # Buffer
-                    byte_array = QByteArray( image_data )
-                    buffer = QBuffer()
-                    buffer.setData( byte_array )
-                    buffer.open( QIODevice.OpenModeFlag.ReadOnly )
-                    # Image
-                    reader = QImageReader( buffer )
-                    qpixmap = QPixmap().fromImageReader( reader )
-                    list_qpixmap.append( qpixmap )
-        except Exception as e:
-            try:QtCore.qDebug( f"TELA | ERROR request failed\n{ e }" )
-            except:pass
-        return list_qpixmap
+    def MirrorFix_Explanation( self ):
+        self.Menu_Reset()
+        self.Message_Float( "MIRROR FIX", f"Press and hold LMB then do a vertical or horizontal drag and release", self.icon_mirrorfix )
+        self.Menu_Clear()
 
     #endregion
     #region Notifier
@@ -1827,7 +2681,7 @@ class Tela_Extension( Extension ):
     def Image_Created( self ):
         pass
     def Image_Saved( self ):
-        pass
+        self.Information_Read()
     def View_Closed( self ):
         pass
     def View_Created( self ):
@@ -1842,11 +2696,11 @@ class Tela_Extension( Extension ):
         self.window.themeChanged.connect( self.Theme_Changed )
         self.window.windowClosed.connect( self.Window_Closed )
 
-        # Toolbox
-        self.Toolbox_Display()
-        self.Toolbox_Button()
-        self.Toolbox_Filter_Install()
-        self.Toolbox_Load()
+        # Tela
+        self.Tela_Display()
+        self.Tela_Button()
+        self.Tela_Filter_Install()
+        self.Tela_Load()
     def Window_IsBeingCreated( self ):
         pass
 
@@ -1854,6 +2708,7 @@ class Tela_Extension( Extension ):
     def View_Changed( self ):
         self.Menu_Reset()
         self.Tool_Update()
+        self.Information_Read()
         self.Theme_Changed()
     def Theme_Changed( self ):
         self.Style_Theme()
@@ -1876,7 +2731,7 @@ class Tela_Extension( Extension ):
         if ( et in [ QEvent.MouseButtonPress, QEvent.MouseButtonRelease, QEvent.PaletteChange ] and source in self.krita_toolbox ):
             self.Tool_Update()
         # Color Picker
-        if ( et == QEvent.Enter and source is self.color_picker ):
+        if ( et == QEvent.Enter and source == self.ui_color_picker ):
             self.Color_READ()
             return True
         return super().eventFilter( source, event )
@@ -1984,21 +2839,56 @@ class Tela_Extension( Extension ):
     if hide_tela == True:
         for i in range( 0, limit+1, +1 ):
             index = ( i / limit ) ** curve
-            self.Tela_Geometry( show_extra, index, True )
-            self.color_picker.hide()
+            self.Geometry_Tela( show_extra, index, True )
+            self.ui_color_picker.hide()
     if hide_tela == False:
         for i in range( limit, -1, -1 ):
             index = ( i / limit ) ** curve
-            self.Tela_Geometry( show_extra, index, True )
+            self.Geometry_Tela( show_extra, index, True )
+    """
+
+    """
+    def Connect_Animation( self ):
+        # Cannot connect because Krita developers don't name their widgets
+        ki = Krita.instance()
+        docker_list = ki.dockers()
+        for docker in docker_list:
+            name = docker.objectName()
+            if name == "TimelineDocker":
+                widget_list = docker.findChildren( QSpinBox )
+                # QtCore.qDebug( f"amount = { len( widget_list ) }" )
+                for widget in widget_list:
+                    try:
+                        tool_tip = widget.toolTip()
+                        if tool_tip == "Frame register":
+                            # self.animation_frame = widget
+                            pass
+                    except:
+                        pass
+    """
+
+    """
+    ET = xml.etree.ElementTree
+    root = ET.fromstring( document_info )
+    QtCore.qDebug( f"root = { root }" )
+    QtCore.qDebug( f"r_tag = { root.tag }" )
+    QtCore.qDebug( f"r_len = { len(root) }" )
+
+    QtCore.qDebug( f"r_abo = { root[0] }" )
+    QtCore.qDebug( f"r_tit = { root[0][0] }" )
+    QtCore.qDebug( f"r_tag = { root[0][0].tag }" )
+    QtCore.qDebug( f"r_tex = { root[0][0].text }" )
     """
 
     #endregion
 
 """
+Krita:
+- Krita changed guides info from document to guidesGonfig module. however you read with guideConfig but set with the deprecated document.
+
 New:
-- Animated toolBox for Hide/Show
-- Ui File destroyed, now widgets are code based
-- Auto updates when Krita changes tool
-- Show Extras
-- Keeps memory of extras state
+- Animation Panel
+- Options Panel
+- Extras Panel
+- Guide Panel
 """
