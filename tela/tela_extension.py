@@ -1449,7 +1449,7 @@ class Tela_Extension( Extension ):
         action_snap_guide = menu_snap.addAction( "Guide" )
         action_snap_grid = menu_snap.addAction( "Grid" )
         action_snap_pixel = menu_snap.addAction( "Pixel" )
-        action_snap_ortogonal = menu_view.addAction( "Ortogonal" )
+        action_snap_ortogonal = menu_snap.addAction( "Ortogonal" )
         action_snap_node = menu_snap.addAction( "Node" )
         action_snap_extension = menu_snap.addAction( "Extension" )
         action_snap_intersection = menu_snap.addAction( "intersection" )
