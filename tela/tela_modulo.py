@@ -20,8 +20,8 @@
 import math
 # Krita
 from krita import *
-# PyQt5
-from PyQt5 import QtWidgets, QtCore, QtGui, uic
+# PyQt6
+from PyQt6 import QtWidgets, QtCore, QtGui, uic
 
 #endregion
 
