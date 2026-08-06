@@ -24,8 +24,8 @@ import xml
 import zipfile
 # Krita Module
 from krita import *
-# PyQt5 Modules
-from PyQt5 import QtWidgets, QtCore, QtGui, uic
+# PyQt6 Modules
+from PyQt6 import QtWidgets, QtCore, QtGui, uic
 # Project Pages Modules
 from .tela_modulo import (
     MirrorFix_Button,
@@ -792,10 +792,10 @@ class Tela_Extension( Extension ):
         qsize = QSize( pw, ph )
         # QWidget
         button.setObjectName( name )
-        button.setSizePolicy( QSizePolicy.Fixed, QSizePolicy.Fixed )
+        button.setSizePolicy( QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed )
         button.setMinimumSize( qsize )
         button.setMaximumSize( qsize )
-        button.setFocusPolicy( Qt.NoFocus )
+        button.setFocusPolicy( Qt.FocusPolicy.NoFocus )
         # QAbstract Button
         button.setText( "" )
         button.setCheckable( check )
@@ -807,18 +807,18 @@ class Tela_Extension( Extension ):
         qsize = QSize( pw, ph )
         # QWidget
         progress.setObjectName( name )
-        progress.setSizePolicy( QSizePolicy.Fixed, QSizePolicy.Fixed )
+        progress.setSizePolicy( QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed )
         progress.setMinimumSize( qsize )
         progress.setMaximumSize( qsize )
-        progress.setFocusPolicy( Qt.NoFocus )
+        progress.setFocusPolicy( Qt.FocusPolicy.NoFocus )
         # QProgress Bar
         progress.setMinimum( 0 )
         progress.setMaximum( 99 )
         progress.setValue( 0 )
         progress.setTextVisible( False )
     def Interface_Slider( self, slider ):
-        slider.setOrientation( Qt.Horizontal )
-        slider.setTickPosition( QSlider.TicksBelow )
+        slider.setOrientation( Qt.Orientation.Horizontal )
+        slider.setTickPosition( QSlider.TickPosition.TicksBelow )
     # Theme
     def Theme_Highlight( self, button, name, background, pen ):
         button.setStyleSheet( "#" + str( name ) + "::checked{ background-color : " + str( background ) + ";}" )
@@ -1488,7 +1488,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
 
         # State
         if action == action_view_canvas_ui:             self.View_Canvas_UI()
@@ -1547,7 +1547,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
         # Action
         if action == action_show_animation: self.Show_Animation( not self.show_animation )
         if action == action_show_option:    self.Show_Option( not self.show_option )
@@ -1703,7 +1703,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
 
         # Pin
         if action in action_menu:
@@ -1883,7 +1883,7 @@ class Tela_Extension( Extension ):
         # QImage
         qimage_thumbnail = ad.thumbnail( adw, adh )
         qimage_selection = qimage_thumbnail.copy( int( px ), int( py ), int( pw ), int( ph ) )
-        mode = Qt.SmoothTransformation
+        mode = Qt.TransformationMode.SmoothTransformation
         if ( self.export_width_state == True and self.export_height_state == False ):
             qimage_scale = qimage_selection.scaledToWidth( int( self.export_width_value ), mode )
         elif ( self.export_width_state == False and self.export_height_state == True ):
@@ -2618,8 +2618,8 @@ class Tela_Extension( Extension ):
         self.Menu_Reset()
         check_canvas = self.Check_Canvas()
         if check_canvas == True:
-            boolean = QMessageBox.question( None, "TELA", f"Mirror Fix Selected Layer(s) ?\nSource = { SIGNAL_SIDE }", QMessageBox.Yes, QMessageBox.No )
-            if ( boolean == QMessageBox.Yes and SIGNAL_SIDE != None ):
+            boolean = QMessageBox.question( None, "TELA", f"Mirror Fix Selected Layer(s) ?\nSource = { SIGNAL_SIDE }", QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No )
+            if ( boolean == QMessageBox.StandardButton.Yes and SIGNAL_SIDE != None ):
                 self.MirrorFix_Run( SIGNAL_SIDE )
     def MirrorFix_Run( self, side ):
         check_canvas = self.Check_Canvas()
@@ -2822,13 +2822,13 @@ class Tela_Extension( Extension ):
         transform_widgets = list()
         # Geometry ( resize )
         if self.qmdiarea != None:
-            if ( event.type() == QEvent.Resize and source == self.qmdiarea ):
+            if ( event.type() == QEvent.Type.Resize and source == self.qmdiarea ):
                 self.Size_Update()
         # Krita ToolBox Signals
-        if ( et in [ QEvent.MouseButtonPress, QEvent.MouseButtonRelease, QEvent.PaletteChange ] and source in self.krita_toolbox ):
+        if ( et in [ QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonRelease, QEvent.Type.PaletteChange ] and source in self.krita_toolbox ):
             self.Tool_Update()
         # Color Picker
-        if ( et == QEvent.Enter and source == self.ui_color_picker ):
+        if ( et == QEvent.Type.Enter and source == self.ui_color_picker ):
             self.Color_READ()
             return True
         return super().eventFilter( source, event )
@@ -2906,7 +2906,7 @@ class Tela_Extension( Extension ):
     """
 
     """
-    # self.setWindowFlags( QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint )
+    # self.setWindowFlags( QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.WindowStaysOnTopHint )
     """
 
     """
