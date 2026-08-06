@@ -47,13 +47,13 @@ class MirrorFix_Button( QWidget ):
         self.origin_y = event.y()
 
         # Neutral
-        if ( event.modifiers() == QtCore.Qt.NoModifier and event.buttons() == QtCore.Qt.LeftButton ):
+        if ( event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton ):
             self.Cursor_Side( event )
     def mouseMoveEvent( self, event ):
-        if ( event.modifiers() == QtCore.Qt.NoModifier and event.buttons() == QtCore.Qt.LeftButton ):
+        if ( event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton ):
             self.Cursor_Side( event )
     def mouseDoubleClickEvent( self, event ):
-        if ( event.modifiers() == QtCore.Qt.NoModifier and event.buttons() == QtCore.Qt.LeftButton ):
+        if ( event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton ):
             self.Cursor_Side( event )
     def mouseReleaseEvent( self, event ):
         # Emite
@@ -132,7 +132,7 @@ class Color_Display( QWidget ):
         # Start Painter
         painter = QPainter( self )
         painter.setRenderHint( QtGui.QPainter.Antialiasing, True )
-        painter.setPen( QtCore.Qt.NoPen )
+        painter.setPen( QtCore.Qt.PenStyle.NoPen )
         painter.setBrush( QBrush( self.hex6 ) )
         painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
 
@@ -229,10 +229,10 @@ class Color_Panel( QWidget ):
         self.origin_y = ey
         self.origin_hue = self.s1
         # Interaction
-        if ( event.modifiers() == QtCore.Qt.ControlModifier and event.buttons() == QtCore.Qt.LeftButton ):
+        if ( event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton ):
             self.hue_circle = True
             self.operation = "color_1"
-        if ( event.modifiers() == QtCore.Qt.NoModifier and event.buttons() == QtCore.Qt.LeftButton ):
+        if ( event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier and event.buttons() == QtCore.Qt.MouseButton.LeftButton ):
             self.hue_circle = False
             self.operation = "color_23"
             self.Color_23( ex, ey, False )
@@ -291,17 +291,17 @@ class Color_Panel( QWidget ):
 
         # Draw Gradient
         if len( self.qpixmap_list ) > 0:
-            painter.setPen( QtCore.Qt.NoPen )
-            painter.setBrush( QtCore.Qt.NoBrush )
+            painter.setPen( QtCore.Qt.PenStyle.NoPen )
+            painter.setBrush( QtCore.Qt.BrushStyle.NoBrush )
             qpixmap = self.qpixmap_list[hue_index]
             if qpixmap.isNull() == False:
-                render = qpixmap.scaled( self.ww, self.hh, QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.FastTransformation )
+                render = qpixmap.scaled( self.ww, self.hh, QtCore.Qt.AspectRatioMode.IgnoreAspectRatio, QtCore.Qt.TransformationMode.FastTransformation )
                 painter.drawPixmap( 0, 0, render )
 
         # Draw Colors
         if self.hue_circle == True:
             # Background
-            painter.setPen( QtCore.Qt.NoPen )
+            painter.setPen( QtCore.Qt.PenStyle.NoPen )
             painter.setBrush( QBrush( self.color_alpha ) )
             painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
 
@@ -320,13 +320,13 @@ class Color_Panel( QWidget ):
             px, py = self.Trig_2D_Angle_Circle( self.w2, self.h2, side, radius, hue_index )
 
             # Dark Border
-            painter.setPen( QtCore.Qt.NoPen )
+            painter.setPen( QtCore.Qt.PenStyle.NoPen )
             painter.setBrush( QBrush( self.color_theme ) )
             painter.drawPath( circle_02 )
 
             # Light Line
-            painter.setPen( QPen( self.color_1, line_width, Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin ) )
-            painter.setBrush( QtCore.Qt.NoBrush )
+            painter.setPen( QPen( self.color_1, line_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin ) )
+            painter.setBrush( QtCore.Qt.BrushStyle.NoBrush )
             line_gray = QPainterPath()
             line_gray.moveTo( int( self.w2 ), int( self.h2 ) )
             line_gray.lineTo( int( px ), int( py ) )
@@ -334,7 +334,7 @@ class Color_Panel( QWidget ):
             painter.drawPath( line_gray )
 
             # Hue Gradient
-            painter.setPen( QtCore.Qt.NoPen )
+            painter.setPen( QtCore.Qt.PenStyle.NoPen )
             d = 255
             hue = QConicalGradient( QPoint( int( self.w2 ), int( self.h2 ) ), 180 )
             hue.setColorAt( 0.000, QColor( int( self.colors[0][0] * d ), int( self.colors[0][1] * d ), int( self.colors[0][2] * d ) ) ) # RED
@@ -348,8 +348,8 @@ class Color_Panel( QWidget ):
             painter.setClipPath( circle_01 )
             painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
             # Dark Line over Hue
-            painter.setPen( QPen( self.color_theme, line_width, Qt.SolidLine, Qt.SquareCap, Qt.MiterJoin ) )
-            painter.setBrush( QtCore.Qt.NoBrush )
+            painter.setPen( QPen( self.color_theme, line_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin ) )
+            painter.setBrush( QtCore.Qt.BrushStyle.NoBrush )
             painter.setClipPath( circle_01 )
             painter.drawLine( int( px ), int( py ), int( self.w2 ), int( self.h2 ) )
         else:
@@ -401,7 +401,7 @@ class Color_Panel( QWidget ):
             )
         painter.setClipPath( mask )
         # Black Circle
-        painter.setPen( QtCore.Qt.NoPen )
+        painter.setPen( QtCore.Qt.PenStyle.NoPen )
         painter.setBrush( QBrush( QColor( "#000000" ) ) )
         painter.drawEllipse( 
             int( self.ex - size ),
@@ -410,7 +410,7 @@ class Color_Panel( QWidget ):
             int( size2 ),
             )
         # White Circle
-        painter.setPen( QtCore.Qt.NoPen )
+        painter.setPen( QtCore.Qt.PenStyle.NoPen )
         painter.setBrush( QBrush( QColor( "#ffffff" ) ) )
         painter.drawEllipse( 
             int( self.ex - size + w1 ),

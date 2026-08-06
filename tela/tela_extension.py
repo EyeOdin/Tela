@@ -1488,7 +1488,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
 
         # State
         if action == action_view_canvas_ui:             self.View_Canvas_UI()
@@ -1547,7 +1547,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
         # Action
         if action == action_show_animation: self.Show_Animation( not self.show_animation )
         if action == action_show_option:    self.Show_Option( not self.show_option )
@@ -1703,7 +1703,7 @@ class Tela_Extension( Extension ):
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
-        action = self.qmenu.exec_( point )
+        action = self.qmenu.exec( point )
 
         # Pin
         if action in action_menu:
@@ -1883,7 +1883,7 @@ class Tela_Extension( Extension ):
         # QImage
         qimage_thumbnail = ad.thumbnail( adw, adh )
         qimage_selection = qimage_thumbnail.copy( int( px ), int( py ), int( pw ), int( ph ) )
-        mode = Qt.SmoothTransformation
+        mode = Qt.TransformationMode.SmoothTransformation
         if ( self.export_width_state == True and self.export_height_state == False ):
             qimage_scale = qimage_selection.scaledToWidth( int( self.export_width_value ), mode )
         elif ( self.export_width_state == False and self.export_height_state == True ):
@@ -2906,7 +2906,7 @@ class Tela_Extension( Extension ):
     """
 
     """
-    # self.setWindowFlags( QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint )
+    # self.setWindowFlags( QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.WindowStaysOnTopHint )
     """
 
     """
