@@ -26,12 +26,8 @@ import zipfile
 from krita import *
 # PyQt5 Modules
 from PyQt5 import QtWidgets, QtCore, QtGui, uic
-# Project Pages Modules
-from .tela_modulo import (
-    MirrorFix_Button,
-    Color_Display,
-    Color_Panel,
-    )
+# Modules
+from .tela_modulo import *
 
 #endregion
 #region Global Variables
@@ -63,9 +59,9 @@ class Tela_Extension( Extension ):
 
     #region Initialize
 
-    def __init__(self, parent):
-        super().__init__(parent)
-    def setup(self):
+    def __init__( self, parent ):
+        super().__init__( parent )
+    def setup( self ):
         self.User_Interface()
         self.Variables()
         self.Modules()
@@ -102,11 +98,13 @@ class Tela_Extension( Extension ):
         self.stacked_widget = None
         self.qmdiarea = None
         self.window_list = list()
-        self.eraser = False
+
+        # State
+        self.state_canvas = False
 
         # Animation
         self.animation_frame = None
-        self.check_timer = 1000
+        self.check_timer = 2000
         self.anim_ctime = 0
         self.anim_stime = 0
         self.anim_etime = 100
@@ -228,6 +226,8 @@ class Tela_Extension( Extension ):
 
         # Krita ToolBox ( Install Event Filter )
         self.krita_toolbox = list()
+        # Eraser
+        self.krita_eraser = None
 
         # Tool Box Widget
         self.menu_vector = None
@@ -258,6 +258,9 @@ class Tela_Extension( Extension ):
         self.show_animation = False
         self.show_option = False
         self.show_extra = False
+        self.show_information = False
+        self.show_guide = False
+        self.show_colorpicker = False
         self.hide_tela = False
 
         # Pushbutton Size
@@ -313,6 +316,7 @@ class Tela_Extension( Extension ):
         self.snap_all = False
     def Modules( self ):
         #region Notifier
+
         self.notifier = Krita.instance().notifier()
         self.notifier.applicationClosing.connect( self.Application_Closing )
         self.notifier.configurationChanged.connect( self.Configuration_Changed )
@@ -339,7 +343,6 @@ class Tela_Extension( Extension ):
         # QTimer
         self.qtimer_pulse = QtCore.QTimer( self )
         self.qtimer_pulse.timeout.connect( self.Update_Cycle )
-        self.qtimer_pulse.start( self.check_timer )
 
     #endregion
     #region Management
@@ -487,6 +490,17 @@ class Tela_Extension( Extension ):
             if name in list_key:
                 self.krita_toolbox.append( widget )
                 widget.installEventFilter( self )
+        # Eraser
+        for widget in list_widget:
+            try:
+                text = widget.text()
+                if text == "Set eraser mode":
+                    self.krita_eraser = widget
+                    widget.installEventFilter( self )
+                    break
+            except:
+                pass
+
     def Tela_Load( self ):
         # Kritarc
         show_animation = self.Kritarc_Read( EXTENSION_NAME, "show_animation", self.show_animation, eval )
@@ -998,10 +1012,7 @@ class Tela_Extension( Extension ):
         else:               h3 = +0.3; p3 = +0.1 # Dark Theme
         handle = QColor().fromHsvF( but[0], but[1], but[2] + h3 ).name()
         page   = QColor().fromHsvF( but[0], but[1], but[2] + p3 ).name()
-        eraser = QColor().fromHsvF( hue[0], win[1], win[2] ).name()
 
-        # Eraser
-        self.color_e = eraser
         # QPushbuttons
         self.Theme_Highlight( self.menu_vector,       "menu_vector",    c_highlight, t_bright )
         self.Theme_Highlight( self.menu_brush,        "menu_brush",     c_highlight, t_bright )
@@ -1031,13 +1042,13 @@ class Tela_Extension( Extension ):
             # Geometry
             self.Geometry_Tela( self.show_animation, self.show_option, self.show_extra, self.hide_tela )
             # Information
-            if self.menu_information.isChecked() == True:
+            if self.show_information == True:
                 self.Geometry_Information()
             # Guide
-            if self.menu_guide.isChecked() == True:
+            if self.show_guide == True:
                 self.Geometry_Guide()
             # Color Picker
-            if self.menu_color_picker.isChecked() == True:
+            if self.show_colorpicker == True:
                 wcp = self.ui_color_picker
                 cp_w = wcp.width()
                 cp_h = wcp.height()
@@ -1047,12 +1058,16 @@ class Tela_Extension( Extension ):
                 self.Geometry_Picker( cp_x, cp_y, cp_w, cp_h )
     # Show Geometry
     def Show_Animation( self, boolean ):
+        self.show_animation = boolean
+        self.Update_Pulse()
         self.Geometry_Tela( boolean, self.show_option, self.show_extra, self.hide_tela )
         self.Kritarc_Write( EXTENSION_NAME, "show_animation", boolean )
     def Show_Option( self, boolean ):
+        self.show_option = boolean
         self.Geometry_Tela( self.show_animation, boolean, self.show_extra, self.hide_tela )
         self.Kritarc_Write( EXTENSION_NAME, "show_option", boolean )
     def Show_Extra( self, boolean ):
+        self.show_extra = boolean
         self.Geometry_Tela( self.show_animation, self.show_option, boolean, self.hide_tela )
         if boolean == False:
             self.Menu_Hide()
@@ -1060,6 +1075,7 @@ class Tela_Extension( Extension ):
         self.Kritarc_Write( EXTENSION_NAME, "show_extra", boolean )
     # Show Extras
     def Extra_Information( self, boolean ):
+        self.show_information = boolean
         if boolean == True:
             self.Menu_Reset()
             self.Size_Update()
@@ -1069,6 +1085,8 @@ class Tela_Extension( Extension ):
         else:
             self.ui_information.hide()
     def Extra_Guide( self, boolean ):
+        self.show_guide = boolean
+        self.Update_Pulse()
         if boolean == True:
             self.Menu_Reset()
             self.Size_Update()
@@ -1077,6 +1095,7 @@ class Tela_Extension( Extension ):
         else:
             self.ui_guide.hide()
     def Extra_Color_Picker( self, boolean ):
+        self.show_colorpicker = boolean
         if boolean == True:
             self.Menu_Reset()
             self.Size_Update()
@@ -1244,6 +1263,11 @@ class Tela_Extension( Extension ):
     #region ToolBox
 
     # Animation
+    def Update_Pulse( self ):
+        # Color Picker was opted out not to update like this
+        boolean = ( self.show_animation == True ) or ( self.show_guide == True )
+        if boolean == True:     self.qtimer_pulse.start( self.check_timer )
+        if boolean == False:    self.qtimer_pulse.stop()
     def Update_Cycle( self ):
         try:check_canvas = self.Check_Canvas()
         except:check_canvas = False
@@ -1251,13 +1275,6 @@ class Tela_Extension( Extension ):
             # Read
             ki = Krita.instance()
             ad = ki.activeDocument()
-            # Eraser
-            eraser = ki.action( "erase_action" ).isChecked()
-            if self.eraser != eraser:
-                self.eraser = eraser
-                if self.eraser == True: icon_eraser = "draw-eraser"
-                else:                   icon_eraser = "hamburger_menu_dots"
-                self.menu_krita.setIcon( ki.icon( icon_eraser ) )
             # Timelines
             if self.show_animation == True:
                 # Read
@@ -1276,7 +1293,7 @@ class Tela_Extension( Extension ):
                     self.anim_timeline.setMaximum( self.anim_etime - self.anim_delta )
                     self.anim_timeline.blockSignals( False )
             # Guides
-            if self.menu_guide.isChecked() == True:
+            if self.show_guide == True:
                 # Read Document
                 guide_config = ad.guidesConfig()
                 guide_list_h = guide_config.horizontalGuides()
@@ -1736,8 +1753,22 @@ class Tela_Extension( Extension ):
         if value >= 99: value = 0
         self.progress_bar.setValue( int( value ) )
 
+    # Eraser
+    def Tool_Eraser( self, boolean ):
+        # Krita Canvas mode flips the state of the ToolTipButton ( BUG )
+        if self.state_canvas == True:   boolean = not boolean
+        # Icons
+        if boolean == True:             icon_eraser = "draw-eraser"
+        else:                           icon_eraser = "hamburger_menu_dots"
+        self.menu_krita.setIcon( Krita.instance().icon( icon_eraser ) )
+
     #endregion
     #region Actions
+
+    # Action
+    def Action_Tag( self, tag ):
+        Krita.instance().action( tag ).trigger()
+        self.Message_Float( "TELA", tag, "python" )
 
     # Animation
     def Animation_Play( self, boolean ):
@@ -1783,6 +1814,8 @@ class Tela_Extension( Extension ):
     # Dockers
     def View_Canvas_UI( self ):
         Krita.instance().action( "view_show_canvas_only" ).trigger()
+        # Krita Canvas mode flips the state of the ToolTipButton ( BUG )
+        self.state_canvas = Krita.instance().action( "view_show_canvas_only" ).isChecked()
     def View_Docker_UI( self ):
         Krita.instance().action( "view_toggledockers" ).trigger()
     def View_Docker_Title( self ):
@@ -2570,7 +2603,6 @@ class Tela_Extension( Extension ):
             # Sliders
             self.Color_Sliders_READ( s1, s2, s3 )
     def Color_WRITE( self, wheel_space, s1, s2, s3, action=True ):
-        # if self.pigmento_module != None:
         if self.pigmento_picker != None:
             # Pigment.O
             if action == False: self.cor = self.pigmento_picker.API_Input_Preview( str( wheel_space ), float( s1 ), float( s2 ), float( s3 ), 0.0 )
@@ -2819,7 +2851,6 @@ class Tela_Extension( Extension ):
     def eventFilter( self, source, event ):
         # Variables
         et = event.type()
-        transform_widgets = list()
         # Geometry ( resize )
         if self.qmdiarea != None:
             if ( event.type() == QEvent.Resize and source == self.qmdiarea ):
@@ -2827,6 +2858,9 @@ class Tela_Extension( Extension ):
         # Krita ToolBox Signals
         if ( et in [ QEvent.MouseButtonPress, QEvent.MouseButtonRelease, QEvent.PaletteChange ] and source in self.krita_toolbox ):
             self.Tool_Update()
+        # Eraser
+        if ( et in [ 24, 12, 184 ] ) and ( source == self.krita_eraser ):
+            self.Tool_Eraser( self.krita_eraser.isChecked() )
         # Color Picker
         if ( et == QEvent.Enter and source == self.ui_color_picker ):
             self.Color_READ()
@@ -2984,8 +3018,5 @@ Krita:
 - Krita changed guides info from document to guidesGonfig module. however you read with guideConfig but set with the deprecated document.
 
 New:
-- Animation Panel
-- Options Panel
-- Extras Panel
-- Guide Panel
+- Lighter Pulse Cycle and Eraser Checks
 """
