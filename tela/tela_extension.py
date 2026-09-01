@@ -74,15 +74,19 @@ class Tela_Extension( Extension ):
             QApplication.setAttribute( Qt.AA_DontShowIconsInMenus, False )
         # Path Name
         self.directory_plugin = str( os.path.dirname( os.path.realpath( __file__ ) ) )
-        # Color Picker
-        ui_color_picker = os.path.join( self.directory_plugin, "color_picker.ui" )
-        self.ui_color_picker = uic.loadUi( ui_color_picker, QWidget() )
         # Information
-        ui_information = os.path.join( self.directory_plugin, "information.ui" )
-        self.ui_information = uic.loadUi( ui_information, QWidget() )
+        url_information = os.path.join( self.directory_plugin, "information.ui" )
+        self.ui_information = uic.loadUi( url_information, QWidget() )
         # Guide
-        ui_guide = os.path.join( self.directory_plugin, "guide.ui" )
-        self.ui_guide = uic.loadUi( ui_guide, QWidget() )
+        url_guide = os.path.join( self.directory_plugin, "guide.ui" )
+        self.ui_guide = uic.loadUi( url_guide, QWidget() )
+        # Color Picker
+        url_color_picker = os.path.join( self.directory_plugin, "color_picker.ui" )
+        self.ui_color_picker = uic.loadUi( url_color_picker, QWidget() )
+        # Shelf Action Manage
+        url_manage_shelf = os.path.join( self.directory_plugin, "manage_shelf.ui" )
+        self.ui_manage_shelf = uic.loadUi( url_manage_shelf, QWidget() )
+        self.ui_manage_shelf.setWindowTitle( "Manage Shelf Action" )
     def Variables( self ):
         # Variables
         ki = Krita.instance()
@@ -224,10 +228,11 @@ class Tela_Extension( Extension ):
             "camera"    : "PanTool",
         }
 
-        # Krita ToolBox ( Install Event Filter )
-        self.krita_toolbox = list()
-        # Eraser
+        # Krita
+        self.krita_toolbox = list()  # ToolBox ( Install Event Filter )
         self.krita_eraser = None
+        self.krita_action = list()
+        self.krita_icon = list()
 
         # Tool Box Widget
         self.menu_vector = None
@@ -254,6 +259,16 @@ class Tela_Extension( Extension ):
         self.index_select = "freehand_select"
         self.index_camera = "pan_tool"
 
+        # Shelf
+        self.shelf_action = list()
+        self.shelf_preset = list()
+        self.shelf_size = QSize( 25, 25 )
+        self.shelf_margin = 30
+        self.search_action = list()
+        self.search_icon = list()
+        # Resources
+        self.resource_preset = list()
+
         # State Tela
         self.show_animation = False
         self.show_option = False
@@ -271,6 +286,7 @@ class Tela_Extension( Extension ):
         # Menu Margin
         self.mx = 10
         self.my = 10
+        self.mi = 23 # 23 is the expected height of a self.qmenu item on windows at least
 
         # Menu
         self.press_time = 500 # 1000=1sec
@@ -477,20 +493,20 @@ class Tela_Extension( Extension ):
         app = QApplication.instance()
         list_widget = app.allWidgets()
         list_key = list()
-        # Construct from toolbox
+        # Krita
         key_a = self.tool.keys()
         for a in key_a:
             key_b = self.tool[a].keys()
             for b in key_b:
                 item = self.tool[a][b][1]
                 list_key.append( item )
-        # Toolbox
+        # Krita Toolbox
         for widget in list_widget:
             name = widget.objectName()
             if name in list_key:
                 self.krita_toolbox.append( widget )
                 widget.installEventFilter( self )
-        # Eraser
+        # Krita Eraser
         for widget in list_widget:
             try:
                 text = widget.text()
@@ -501,6 +517,8 @@ class Tela_Extension( Extension ):
             except:
                 pass
 
+        # Tela
+        self.ui_color_picker.installEventFilter( self )
     def Tela_Load( self ):
         # Kritarc
         show_animation = self.Kritarc_Read( EXTENSION_NAME, "show_animation", self.show_animation, eval )
@@ -513,6 +531,9 @@ class Tela_Extension( Extension ):
         self.menu_tela.blockSignals( False )
         # Geometry
         self.Geometry_Tela( show_animation, show_option, show_extra, hide_tela )
+        # Resources
+        self.shelf_action = self.Kritarc_Read( EXTENSION_NAME, "shelf_action", self.shelf_action, eval )
+        self.shelf_preset = self.Kritarc_Read( EXTENSION_NAME, "shelf_preset", self.shelf_preset, eval )
     # Tool
     def Tool_Update( self ):
         # Canvas
@@ -751,8 +772,13 @@ class Tela_Extension( Extension ):
         # Hide
         self.menu_tela.toggled.connect( self.Hide_Tela )
 
-        # User Interface Update
-        self.ui_color_picker.installEventFilter( self )
+        # Shelf
+        self.ui_manage_shelf.shelf_remove.clicked.connect( self.Shelf_Remove )
+        self.ui_manage_shelf.append_action.clicked.connect( self.Shelf_Action )
+        self.ui_manage_shelf.append_icon.clicked.connect( self.Shelf_Icon )
+        # Search
+        self.ui_manage_shelf.search_action.textChanged.connect( self.Search_Action )
+        self.ui_manage_shelf.search_icon.textChanged.connect( self.Search_Icon )
 
         #endregion
         #region Modules
@@ -939,41 +965,45 @@ class Tela_Extension( Extension ):
         self.tool["camera"]["zoom_tool"][2]         = icon_zoom_tool
         self.tool["camera"]["pan_tool"][2]          = icon_pan_tool
 
-
         # Animation
-        self.anim_play.setIcon(             ki.icon( "animation_play" ) )
-        self.anim_onion.setIcon(            ki.icon( "onion_skin_options" ) )
-        self.anim_cache.setIcon(            ki.icon( self.icon_anim_cache ) )
-        self.anim_cleanup.setIcon(          ki.icon( self.icon_anim_cleanup ) )
+        self.anim_play.setIcon(          ki.icon( "animation_play" ) )
+        self.anim_onion.setIcon(         ki.icon( "onion_skin_options" ) )
+        self.anim_cache.setIcon(         ki.icon( self.icon_anim_cache ) )
+        self.anim_cleanup.setIcon(       ki.icon( self.icon_anim_cleanup ) )
         # Tool Box
-        self.menu_krita.setIcon(            ki.icon( "hamburger_menu_dots" ) )
-        self.menu_vector.setIcon(           self.tool["vector"][self.index_vector][2] )
-        self.menu_brush.setIcon(            self.tool["brush"][self.index_brush][2] )
-        self.menu_transform.setIcon(        self.tool["transform"][self.index_transform][2] )
-        self.menu_color.setIcon(            self.tool["color"][self.index_color][2] )
-        self.menu_overlay.setIcon(          self.tool["overlay"][self.index_overlay][2] )
-        self.menu_select.setIcon(           self.tool["select"][self.index_select][2] )
-        self.menu_camera.setIcon(           self.tool["camera"][self.index_camera][2] )
-        self.menu_break.setIcon(            ki.icon( "hamburger_menu_dots" ) )
+        self.menu_krita.setIcon(         ki.icon( "hamburger_menu_dots" ) )
+        self.menu_vector.setIcon(        self.tool["vector"][self.index_vector][2] )
+        self.menu_brush.setIcon(         self.tool["brush"][self.index_brush][2] )
+        self.menu_transform.setIcon(     self.tool["transform"][self.index_transform][2] )
+        self.menu_color.setIcon(         self.tool["color"][self.index_color][2] )
+        self.menu_overlay.setIcon(       self.tool["overlay"][self.index_overlay][2] )
+        self.menu_select.setIcon(        self.tool["select"][self.index_select][2] )
+        self.menu_camera.setIcon(        self.tool["camera"][self.index_camera][2] )
+        self.menu_break.setIcon(         ki.icon( "hamburger_menu_dots" ) )
         # Extras
-        self.menu_information.setIcon(      ki.icon( "selection-info" ) )
-        self.menu_guide.setIcon(            ki.icon( "addlayer" ) )
-        self.menu_color_picker.setIcon(     icon_color_picker )
-        self.menu_mirror_fix.setIcon(       ki.icon( self.icon_mirrorfix ) )
+        self.menu_information.setIcon(   ki.icon( "selection-info" ) )
+        self.menu_guide.setIcon(         ki.icon( "addlayer" ) )
+        self.menu_color_picker.setIcon(  icon_color_picker )
+        self.menu_mirror_fix.setIcon(    ki.icon( self.icon_mirrorfix ) )
         # Transform
-        self.spt_free.setIcon(              ki.icon( "transform_icons_main" ) )
-        self.spt_perspective.setIcon(       ki.icon( "transform_icons_perspective" ) )
-        self.spt_warp.setIcon(              ki.icon( "transform_icons_warp" ) )
-        self.spt_cage.setIcon(              ki.icon( "transform_icons_cage" ) )
-        self.spt_liquify.setIcon(           ki.icon( "transform_icons_liquify_main" ) )
-        self.spt_mesh.setIcon(              ki.icon( "transform_icons_mesh" ) )
+        self.spt_free.setIcon(           ki.icon( "transform_icons_main" ) )
+        self.spt_perspective.setIcon(    ki.icon( "transform_icons_perspective" ) )
+        self.spt_warp.setIcon(           ki.icon( "transform_icons_warp" ) )
+        self.spt_cage.setIcon(           ki.icon( "transform_icons_cage" ) )
+        self.spt_liquify.setIcon(        ki.icon( "transform_icons_liquify_main" ) )
+        self.spt_mesh.setIcon(           ki.icon( "transform_icons_mesh" ) )
         # Select
-        self.sps_invert.setIcon(            ki.icon( "select-invert" ) )
-        self.sps_all.setIcon(               ki.icon( "select-all" ) )
-        self.sps_none.setIcon(              ki.icon( "select-clear" ) )
-        self.sps_overlay.setIcon(           ki.icon( "selection-mode_mask" ) ) # selection-mode_ants
+        self.sps_invert.setIcon(         ki.icon( "select-invert" ) )
+        self.sps_all.setIcon(            ki.icon( "select-all" ) )
+        self.sps_none.setIcon(           ki.icon( "select-clear" ) )
+        self.sps_overlay.setIcon(        ki.icon( "selection-mode_mask" ) ) # selection-mode_ants
         # Hide
-        self.menu_tela.setIcon(             ki.icon( "arrow-up" ) )
+        self.menu_tela.setIcon(          ki.icon( "arrow-up" ) )
+
+        # Manager
+        self.ui_manage_shelf.shelf_remove.setIcon(  ki.icon( "arrow-right" ) )
+        self.ui_manage_shelf.append_action.setIcon( ki.icon( "arrow-left" ) )
+        self.ui_manage_shelf.append_icon.setIcon(   ki.icon( "arrow-left" ) )
     def Style_Theme( self ):
         # Read
         palette = QApplication.palette()
@@ -1227,8 +1257,8 @@ class Tela_Extension( Extension ):
         if self.qmdiarea != None:
             # Cursor
             position = QCursor().pos()
-            cx = position.x()
-            cy = position.y()
+            cx = int( position.x() )
+            cy = int( position.y() )
             # Canvas
             delta = self.qmdiarea.mapFromGlobal( QPoint( 0, 0 ) )
             dx = delta.x()
@@ -1243,26 +1273,24 @@ class Tela_Extension( Extension ):
             cpy = colorpanel.y()
             cpw = colorpanel.width()
             cph = colorpanel.height()
-            cp_cx = cpw * self.s2
-            cp_cy = cph - cph * self.s3
-            cp_cx = self.Limit_Range( int( cp_cx ), 0, cpw, 0, -1 )
-            cp_cy = self.Limit_Range( int( cp_cy ), 0, cph, 0, -1 )
+            cp_cx = int( cpw * self.s2 )
+            cp_cy = int( cph - cph * self.s3 )
+            cp_cx = self.Limit_Range( cp_cx, 0, cpw, 0, -1 )
+            cp_cy = self.Limit_Range( cp_cy, 0, cph, 0, -1 )
 
             # Relocate Color Picker
             self.Geometry_Picker( cx+dx-cpx-cp_cx, cy+dy-cpy-cp_cy, ww, wh )
             # Toggle Visibility
             check_visible = self.ui_color_picker.isVisible()
-            if check_visible == False:
-                self.ui_color_picker.setVisible( True )
-            else:
-                self.ui_color_picker.setVisible( False )
+            if check_visible == False:      self.ui_color_picker.setVisible( True )
+            else:                           self.ui_color_picker.setVisible( False )
     def Geometry_Picker( self, px, py, ww, wh ):
-        self.ui_color_picker.setGeometry( int( px ), int( py ), int( ww ), int( wh ) )
+        self.ui_color_picker.setGeometry( px, py, ww, wh )
 
     #endregion
     #region ToolBox
 
-    # Animation
+    # Updates
     def Update_Pulse( self ):
         # Color Picker was opted out not to update like this
         boolean = ( self.show_animation == True ) or ( self.show_guide == True )
@@ -1272,117 +1300,63 @@ class Tela_Extension( Extension ):
         try:check_canvas = self.Check_Canvas()
         except:check_canvas = False
         if check_canvas == True:
-            # Read
             ki = Krita.instance()
             ad = ki.activeDocument()
-            # Timelines
-            if self.show_animation == True:
-                # Read
-                anim_ctime = ad.currentTime()
-                anim_stime = ad.playBackStartTime()
-                anim_etime = ad.playBackEndTime()
-                self.anim_delta = anim_stime
-                # Update
-                if self.anim_ctime != anim_ctime or self.anim_stime != anim_stime or self.anim_etime != anim_etime:
-                    self.anim_ctime = anim_ctime
-                    self.anim_stime = anim_stime
-                    self.anim_etime = anim_etime
-                    self.anim_timeline.blockSignals( True )
-                    self.anim_timeline.setValue( self.anim_ctime - self.anim_delta )
-                    self.anim_timeline.setMinimum( self.anim_stime - self.anim_delta )
-                    self.anim_timeline.setMaximum( self.anim_etime - self.anim_delta )
-                    self.anim_timeline.blockSignals( False )
-            # Guides
-            if self.show_guide == True:
-                # Read Document
-                guide_config = ad.guidesConfig()
-                guide_list_h = guide_config.horizontalGuides()
-                guide_list_v = guide_config.verticalGuides()
-                guide_ruler = ki.action( "view_ruler" ).isChecked()
-                guide_show = ki.action( "view_show_guides" ).isChecked()
-                guide_snap = ki.action( "view_snap_to_guides" ).isChecked()
-                guide_lock = ki.action( "view_lock_guides" ).isChecked()
-                # Correct lists error range
-                for i in range( 0, len( guide_list_h ) ):
-                    guide_list_h[i] = round( guide_list_h[i] )
-                for i in range( 0, len( guide_list_v ) ):
-                    guide_list_v[i] = round( guide_list_v[i] )
-                guide_list_h.sort()
-                guide_list_v.sort()
-                # Update Document
-                if self.guide_list_h != guide_list_h:
-                    self.Guide_UI_List_H( guide_list_h )
-                if self.guide_list_v != guide_list_v:
-                    self.Guide_UI_List_V( guide_list_v )
-                if self.guide_ruler != guide_ruler:
-                    self.guide_ruler = guide_ruler
-                    self.Guide_Ruler( guide_ruler )
-                    self.Guide_UI_Ruler( guide_ruler )
-                if self.guide_show != guide_show:
-                    self.guide_show = guide_show
-                    self.Guide_Show( guide_show )
-                    self.Guide_UI_Show( guide_show )
-                if self.guide_snap != guide_snap:
-                    self.guide_snap = guide_snap
-                    self.Guide_Snap( guide_snap )
-                    self.Guide_UI_Snap( guide_snap )
-                if self.guide_lock != guide_lock:
-                    self.guide_lock = guide_lock
-                    self.Guide_Lock( guide_lock )
-                    self.Guide_UI_Lock( guide_lock )
-    def Animation_Frame( self ):
-        # Active Document
-        document = Krita.instance().activeDocument()
-        # Animation Correction
-        return_list = self.Read_Nodes( document )
-        animation = False
-        for i in range( 0, len( return_list ) ):
-            animation = return_list[i].animated()
-            if animation == True:
-                self.Message_Float( "ANIMATION CLEANUP", f"Document has animation hence no action was taken", self.icon_anim_cleanup )
-                break
-        if animation == False:
-            self.Message_Float( "ANIMATION CLEANUP", f"Document animation range was set to zero", self.icon_anim_cleanup )
-            document.setFullClipRangeStartTime( 0 )
-            document.setFullClipRangeEndTime( 0 )
-    def Read_Nodes( self, document ):
-        # Document
-        top_nodes = document.topLevelNodes()
-        # Top level Nodes
-        new_nodes = list()
-        for i in range( 0, len( top_nodes ) ):
-            new_nodes.append( top_nodes[i] )
-        # Variables
-        check_again = True
-        counter = 0
-        node_dic = { 0 : new_nodes }
-        # Infinite Cycle
-        while check_again == True:
-            # layer read
-            new_nodes = list()
-            nodes = node_dic[counter]
-            # Layer Level
-            for i in range( 0, len( nodes ) ):
-                try:
-                    child_nodes = nodes[i].childNodes()
-                    if len( child_nodes ) > 0:
-                        for cn in range( 0, len( child_nodes ) ):
-                            new_nodes.append( child_nodes[cn] )
-                except:
-                    pass
-            # cycle control
-            if len( new_nodes ) == 0:
-                check_again = False
-            else:
-                counter += 1
-                node_dic[counter] = new_nodes
-        # Return List
-        return_list = list()
-        for i in range( 0, len( node_dic ) ):
-            for j in range( 0, len( node_dic[i] ) ):
-                node = node_dic[i][j]
-                return_list.append( node )
-        return return_list
+            if self.show_animation == True:     self.Update_Animation( ad )
+            if self.show_guide == True:         self.Update_Guide( ki, ad )
+    def Update_Animation( self, ad ):
+        # Read
+        anim_ctime = ad.currentTime()
+        anim_stime = ad.playBackStartTime()
+        anim_etime = ad.playBackEndTime()
+        self.anim_delta = anim_stime
+        # Update
+        if self.anim_ctime != anim_ctime or self.anim_stime != anim_stime or self.anim_etime != anim_etime:
+            self.anim_ctime = anim_ctime
+            self.anim_stime = anim_stime
+            self.anim_etime = anim_etime
+            self.anim_timeline.blockSignals( True )
+            self.anim_timeline.setValue( self.anim_ctime - self.anim_delta )
+            self.anim_timeline.setMinimum( self.anim_stime - self.anim_delta )
+            self.anim_timeline.setMaximum( self.anim_etime - self.anim_delta )
+            self.anim_timeline.blockSignals( False )
+    def Update_Guide( self, ki, ad ):
+            # Read Document
+            guide_config = ad.guidesConfig()
+            guide_list_h = guide_config.horizontalGuides()
+            guide_list_v = guide_config.verticalGuides()
+            guide_ruler = ki.action( "view_ruler" ).isChecked()
+            guide_show = ki.action( "view_show_guides" ).isChecked()
+            guide_snap = ki.action( "view_snap_to_guides" ).isChecked()
+            guide_lock = ki.action( "view_lock_guides" ).isChecked()
+            # Correct lists error range
+            for i in range( 0, len( guide_list_h ) ):
+                guide_list_h[i] = round( guide_list_h[i] )
+            for i in range( 0, len( guide_list_v ) ):
+                guide_list_v[i] = round( guide_list_v[i] )
+            guide_list_h.sort()
+            guide_list_v.sort()
+            # Update Document
+            if self.guide_list_h != guide_list_h:
+                self.Guide_UI_List_H( ad, guide_list_h )
+            if self.guide_list_v != guide_list_v:
+                self.Guide_UI_List_V( ad, guide_list_v )
+            if self.guide_ruler != guide_ruler:
+                self.guide_ruler = guide_ruler
+                self.Guide_Ruler( guide_ruler )
+                self.Guide_UI_Ruler( guide_ruler )
+            if self.guide_show != guide_show:
+                self.guide_show = guide_show
+                self.Guide_Show( guide_show )
+                self.Guide_UI_Show( guide_show )
+            if self.guide_snap != guide_snap:
+                self.guide_snap = guide_snap
+                self.Guide_Snap( guide_snap )
+                self.Guide_UI_Snap( guide_snap )
+            if self.guide_lock != guide_lock:
+                self.guide_lock = guide_lock
+                self.Guide_Lock( guide_lock )
+                self.Guide_UI_Lock( guide_lock )
 
     # Krita
     def Hold_Krita( self ):
@@ -1500,8 +1474,7 @@ class Tela_Extension( Extension ):
 
         # Mapping
         item = 6
-        size = 23  # 23 is the expected height of a self.qmenu item on windows at least
-        height = size * item + self.my
+        height = self.mi * item + self.my
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
@@ -1558,9 +1531,8 @@ class Tela_Extension( Extension ):
         action_show_extra.setCheckable( True )
         action_show_extra.setChecked( self.show_extra )
         # Mapping
-        item = 2
-        size = 23  # 23 is the expected height of a self.qmenu item on windows at least
-        height = size * item + self.my
+        item = 3
+        height = self.mi * item + self.my
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
@@ -1715,8 +1687,7 @@ class Tela_Extension( Extension ):
         self.qmenu.addActions( action_menu )
 
         # Mapping
-        size = 23  # 23 is the expected height of a self.qmenu item on windows at least
-        height = size * len_key + self.my
+        height = self.mi * len_key + self.my
         qpoint = widget.geometry().topLeft()
         pos = self.qmdiarea.mapToGlobal( qpoint )
         point = QPoint( pos.x(), pos.y() - height )
@@ -1763,12 +1734,297 @@ class Tela_Extension( Extension ):
         self.menu_krita.setIcon( Krita.instance().icon( icon_eraser ) )
 
     #endregion
+    #region Shelf Action
+
+    # Theme Read
+    def Krita_Action_Icon_Read( self ):
+        # Krita
+        ki = Krita.instance()
+
+        # Icon
+        self.krita_icon = list()
+        list_format = [ "*.svg","*.svgz","*.svz","*.png" ]
+        # Read Files
+        qdir = QDir( ":/pics/" ).entryList( list_format, QDir.Filter.Files )
+        qdir += QDir( ":/" ).entryList( list_format, QDir.Filter.Files )
+        # Cycle
+        for tag in qdir:
+            # Parse
+            split = tag.split( '_', 1 )
+            if any( icon_size == split[0] for icon_size in [ '16', '22', '24', '32', '48', '64', '128', '256', '512', '1048' ] ):
+                tag = split[1]
+            split = tag.split( '_', 1 )
+            if any( icon_size == split[0] for icon_size in [ 'light', 'dark' ] ):
+                tag = split[1]
+            split = tag.split( '.' )
+            tag = split[0]
+            # List
+            if tag not in self.krita_icon:
+                self.krita_icon.append( tag )
+        self.krita_icon.sort()
+
+        # Action
+        self.krita_action = list()
+        list_action = ki.actions()
+        for i in range( 0, len( list_action ) ):
+            # Read
+            action = list_action[i]
+            name = action.objectName()
+            tool_tip = action.toolTip()
+            qicon = action.icon()
+            tag = str()
+            # List
+            item = [ name, tool_tip, tag, qicon ]
+            if item not in self.krita_action:
+                self.krita_action.append( item )
+        self.krita_action.sort()
+
+        # Search the Tag for the QIcon
+        for action in self.krita_action:
+            try:
+                data_a = self.qicon_to_data( action[3] )
+                for tag in self.krita_icon:
+                    data_i = self.qicon_to_data( ki.icon( tag ) )
+                    if data_a == data_i:
+                        action[2] = tag
+                        break
+            except:pass
+            action = action[0:2]
+        # Search Default state
+        self.search_action = self.krita_action
+        self.search_icon = self.krita_icon
+    def qicon_to_data( self, qicon ):
+        size = 24
+        pixmap = qicon.pixmap( size, size )
+        image = pixmap.toImage().convertToFormat( QImage.Format_RGBA8888 )
+        data = image.bits().asstring( image.sizeInBytes() )
+        return data
+
+    # Menu
+    def Menu_Shelf_Action( self ):
+        # Krita
+        ki = Krita.instance()
+        # Variables
+        len_item = len( self.shelf_action ) + 1
+
+        # Menu
+        self.qmenu = QMenu()
+        self.qmenu.addSection( f"Shelf Action" )
+        # Manage
+        action_manage = self.qmenu.addAction( "Manage" )
+        self.qmenu.addSeparator()
+        # Actions
+        list_shelf = list() # Actions
+        for item in self.shelf_action:
+            # Action
+            name      = item[0] # name
+            tool_tip  = item[1]
+            qicon     = ki.icon( item[2] ) # tag
+            # Action
+            action = self.qmenu.addAction( name )
+            action.setToolTip( tool_tip )
+            action.setIcon( qicon )
+            # List
+            list_shelf.append( action )
+        # Mapping
+        pos = QCursor().pos()
+        px = pos.x() - 100
+        py = pos.y() - len_item * self.mi - self.shelf_margin
+        qpoint = QPoint( px, py )
+        action = self.qmenu.exec_( qpoint )
+        # Trigger Action
+        for i in range( 0, len( list_shelf ) ):
+            action_i = list_shelf[i]
+            if action == action_i:
+                self.Action_Tag( self.shelf_action[i][0] )
+                break
+        # Manage Preset
+        if action == action_manage:
+            self.Shelf_Manage( show=True )
+    # Manage
+    def Shelf_Manage( self, show=False, shelf=False, action=False, icon=False ):
+        # Krita
+        ki = Krita.instance()
+        # Shelf Action
+        if show == True or shelf == True:
+            self.ui_manage_shelf.shelf_action.clear()
+            for item_s in self.shelf_action:
+                name     = item_s[0]
+                tool_tip = item_s[1]
+                qicon    = ki.icon( item_s[2] )
+                item = QListWidgetItem( qicon, name )
+                item.setToolTip( tool_tip )
+                item.setSizeHint( self.shelf_size )
+                self.ui_manage_shelf.shelf_action.addItem( item )
+        # Krita Action
+        if show == True or action == True:
+            self.ui_manage_shelf.krita_action.clear()
+            for item_a in self.search_action:
+                name     = item_a[0]
+                tool_tip = item_a[1]
+                qicon    = ki.icon( item_a[2] )
+                item = QListWidgetItem( qicon, name )
+                item.setToolTip( tool_tip )
+                item.setSizeHint( self.shelf_size )
+                self.ui_manage_shelf.krita_action.addItem( item )
+        # Krita Icon
+        if show == True or icon == True:
+            self.ui_manage_shelf.krita_icon.clear()
+            for item_i in self.search_icon:
+                tag   = item_i
+                qicon = ki.icon( tag )
+                item = QListWidgetItem( qicon, tag )
+                item.setSizeHint( self.shelf_size )
+                self.ui_manage_shelf.krita_icon.addItem( item )
+        # Interface
+        index = -1
+        self.ui_manage_shelf.shelf_action.setCurrentRow( index )
+        self.ui_manage_shelf.krita_action.setCurrentRow( index )
+        self.ui_manage_shelf.krita_icon.setCurrentRow( index )
+        if show == True:
+            self.ui_manage_shelf.search_action.setPlaceholderText( str( len( self.krita_action ) ) )
+            self.ui_manage_shelf.search_icon.setPlaceholderText( str( len( self.krita_icon ) ) )
+            self.ui_manage_shelf.show()
+        # Memory
+        self.Kritarc_Write( EXTENSION_NAME, "shelf_action", self.shelf_action )
+    def Shelf_Remove( self ):
+        # Read
+        index = self.ui_manage_shelf.shelf_action.currentRow()
+        count = self.ui_manage_shelf.shelf_action.count()
+        # Logic
+        check = 0 <= index <= count
+        if check == True:
+            self.shelf_action.pop( index )
+            self.Shelf_Manage( shelf=True )
+    def Shelf_Action( self ):
+        # Read
+        index = self.ui_manage_shelf.krita_action.currentRow()
+        count = self.ui_manage_shelf.krita_action.count()
+        # Logic
+        check = 0 <= index <= count
+        if check == True:
+            # Variables
+            action = self.search_action[index]
+            name     = action[0]
+            tool_tip = action[1]
+            tag      = action[2]
+            # List
+            item = [ name, tool_tip, tag ]
+            if item not in self.shelf_action:
+                self.shelf_action.append( item )
+            self.shelf_action.sort()
+            # Update
+            self.Shelf_Manage( shelf=True )
+    def Shelf_Icon( self ):
+        # Read Row
+        index_shelf = self.ui_manage_shelf.shelf_action.currentRow()
+        index_icon = self.ui_manage_shelf.krita_icon.currentRow()
+        # Read Count
+        count_shelf = self.ui_manage_shelf.shelf_action.count()
+        count_icon = self.ui_manage_shelf.krita_icon.count()
+        # Logic
+        check = 0 <= index_shelf <= count_shelf and 0 <= index_icon <= count_icon
+        if check == True:
+            self.shelf_action[ index_shelf ][2] = self.search_icon[ index_icon ]
+            self.Shelf_Manage( shelf=True )
+
+    # Search
+    def Search_Action( self, text ):
+        text = text.lower()
+        if text == str():
+            self.search_action = self.krita_action
+        else:
+            self.search_action = list()
+            for item in self.krita_action:
+                if text in item[0].lower():
+                    self.search_action.append( item )
+        self.Shelf_Manage( action=True )
+    def Search_Icon( self, text ):
+        text = text.lower()
+        if text == str():
+            self.search_icon = self.krita_icon
+        else:
+            self.search_icon = list()
+            for tag in self.krita_icon:
+                if text in tag.lower():
+                    self.search_icon.append( tag )
+        self.Shelf_Manage( icon=True )
+
+    #endregion
+    #region Resource
+
+    # Shelf Resource Presets
+    def Menu_Shelf_ResourcePreset( self ):
+        # Resource types = "pattern" "gradient" "brush" "preset" "palette" "workspace"
+
+        # Krita
+        ki = Krita.instance()
+        av = ki.activeWindow().activeView()
+        # Read
+        self.resource_preset = ki.resources( "preset" )
+        current_preset = av.currentBrushPreset().name()
+        # Variables
+        check_preset = current_preset in self.shelf_preset
+        len_item = len( self.shelf_preset ) + 2
+
+        # Menu
+        self.qmenu = QMenu()
+        self.qmenu.addSection( f"Shelf Brush Preset" )
+        # Manage
+        action_preset_append = self.qmenu.addAction( f"Append [ { current_preset } ]" )
+        menu_manage = self.qmenu.addMenu( "Manage" )
+        action_preset_remove = menu_manage.addAction( "Remove from List" )
+        action_preset_delete = menu_manage.addAction( "Delete List" )
+        self.qmenu.addSeparator()
+        # Preset
+        list_shelf = list() # Brush Preset
+        for key in self.shelf_preset:
+            try:  # Brush pack can be activated and deactivated
+                # Resource
+                resource = self.resource_preset[ key ]
+                name = resource.name()
+                qicon = QIcon( QPixmap().fromImage( resource.image() ) )
+                # Action
+                action = self.qmenu.addAction( name )
+                action.setIcon( qicon )
+                # List
+                list_shelf.append( action )
+            except:pass
+        # State
+        if check_preset == True:    action_preset_append.setEnabled( False )
+        if check_preset == False:   action_preset_remove.setEnabled( False )
+        # Mapping
+        pos = QCursor().pos()
+        px = pos.x() - 100
+        py = pos.y() - len_item * self.mi - self.shelf_margin
+        qpoint = QPoint( px, py )
+        action = self.qmenu.exec_( qpoint )
+        # Select Preset
+        for i in range( 0, len( list_shelf ) ):
+            action_i = list_shelf[i]
+            if action == action_i:
+                resource = self.resource_preset[ action_i.text() ]
+                av.setCurrentBrushPreset( resource )
+                break
+        # Manage Preset
+        if action == action_preset_append:
+            self.shelf_preset.append( current_preset )
+            self.shelf_preset.sort()
+        if action == action_preset_remove:
+            index = self.shelf_preset.index( current_preset )
+            self.shelf_preset.pop( index )
+        if action == action_preset_delete:
+            self.shelf_preset = list()
+        # Memory
+        self.Kritarc_Write( EXTENSION_NAME, "shelf_preset", self.shelf_preset )
+
+    #endregion
     #region Actions
 
     # Action
     def Action_Tag( self, tag ):
         Krita.instance().action( tag ).trigger()
-        self.Message_Float( "TELA", tag, "python" )
+        self.Message_Float( "ACTION", tag, "python" )
 
     # Animation
     def Animation_Play( self, boolean ):
@@ -1880,50 +2136,60 @@ class Tela_Extension( Extension ):
         Krita.instance().action( "view_snap_image_center" ).setChecked( boolean )
 
     #endregion
-    #region Export Selection
+    #region Animation
 
-    def Export_Selection( self ):
-        if ( self.canvas() != None ) and ( self.canvas().view() != None ):
-            # File
-            file_dialog = QFileDialog( QWidget( self ) )
-            file_dialog.setFileMode( QFileDialog.FileMode.AnyFile )
-            save_path = file_dialog.getSaveFileName( self, "Export Location", "", "*.png" )[0]
-
-            # Run the Export
-            if save_path != None:
-                self.Export_RUN( save_path )
-    def Export_RUN( self, save_path ):
-        # Read
-        ki = Krita.instance()
-        ad = ki.activeDocument()
-        node = ad.activeNode()
-        adw = ad.width()
-        adh = ad.height()
-
-        # Selection
-        ss = ad.selection()
-        if ss == None: # Create a selection
-            px = 0
-            py = 0
-            pw = ad.width()
-            ph = ad.height()
-        else: # Custom
-            px = ss.x()
-            py = ss.y()
-            pw = ss.width()
-            ph = ss.height()
-
-        # QImage
-        qimage_thumbnail = ad.thumbnail( adw, adh )
-        qimage_selection = qimage_thumbnail.copy( int( px ), int( py ), int( pw ), int( ph ) )
-        mode = Qt.SmoothTransformation
-        if ( self.export_width_state == True and self.export_height_state == False ):
-            qimage_scale = qimage_selection.scaledToWidth( int( self.export_width_value ), mode )
-        elif ( self.export_width_state == False and self.export_height_state == True ):
-            qimage_scale = qimage_selection.scaledToHeight( int( self.export_height_value ), mode )
-        else:
-            qimage_scale = qimage_selection
-        qimage_scale.save( save_path )
+    def Animation_Frame( self ):
+        # Active Document
+        document = Krita.instance().activeDocument()
+        # Animation Correction
+        return_list = self.Read_Nodes( document )
+        animation = False
+        for i in range( 0, len( return_list ) ):
+            animation = return_list[i].animated()
+            if animation == True:
+                self.Message_Float( "ANIMATION CLEANUP", f"Document has animation hence no action was taken", self.icon_anim_cleanup )
+                break
+        if animation == False:
+            self.Message_Float( "ANIMATION CLEANUP", f"Document animation range was set to zero", self.icon_anim_cleanup )
+            document.setFullClipRangeStartTime( 0 )
+            document.setFullClipRangeEndTime( 0 )
+    def Read_Nodes( self, document ):
+        # Document
+        top_nodes = document.topLevelNodes()
+        # Top level Nodes
+        new_nodes = list()
+        for i in range( 0, len( top_nodes ) ):
+            new_nodes.append( top_nodes[i] )
+        # Variables
+        check_again = True
+        counter = 0
+        node_dic = { 0 : new_nodes }
+        # Infinite Cycle
+        while check_again == True:
+            # layer read
+            new_nodes = list()
+            nodes = node_dic[counter]
+            # Layer Level
+            for i in range( 0, len( nodes ) ):
+                try:
+                    child_nodes = nodes[i].childNodes()
+                    if len( child_nodes ) > 0:
+                        for cn in range( 0, len( child_nodes ) ):
+                            new_nodes.append( child_nodes[cn] )
+                except:pass
+            # cycle control
+            if len( new_nodes ) == 0:
+                check_again = False
+            else:
+                counter += 1
+                node_dic[counter] = new_nodes
+        # Return List
+        return_list = list()
+        for i in range( 0, len( node_dic ) ):
+            for j in range( 0, len( node_dic[i] ) ):
+                node = node_dic[i][j]
+                return_list.append( node )
+        return return_list
 
     #endregion
     #region Information
@@ -2271,211 +2537,114 @@ class Tela_Extension( Extension ):
     #endregion
     #region Guide
 
+    # Interface
     def Guide_Mirror_Horizontal( self, boolean ):
+        # Krita
+        ad = Krita.instance().activeDocument()
+        # Variables
         self.guide_mirror_h = boolean
+        # Interface
         if boolean == True:
-            # Widget
+            # Interface
             self.ui_guide.guide_mirror_h.setText( "Horizontal [Mirror]" )
-            # document
-            height = Krita.instance().activeDocument().height()
+            # Document
+            height = ad.height()
             h2 = height * 0.5
-            guide_mirror = set()
-            # Cycle
-            for i in range( 0, len( self.guide_list_h ) ):
-                # Entry
-                entry = self.guide_list_h[i]
-                guide_mirror.add( entry )
-                # Reflect
-                delta = entry - h2
-                if ( entry < h2 ) or ( entry > h2 ):
-                    reflect = h2 - delta
-                    guide_mirror.add( reflect )
-                # Set
-            guide_mirror = sorted( list( guide_mirror ) )
-            self.guide_list_h = guide_mirror.copy()
+            # Mirror
+            for guide in self.guide_list_h:
+                value = height - guide
+                if ( value not in self.guide_list_h ) and ( value != h2 ):
+                    self.guide_list_h.append( value )
+            self.guide_list_h.sort()
+            self.Guide_Write_H( ad, self.guide_list_h )
         else:
             self.ui_guide.guide_mirror_h.setText( "Horizontal" )
         # Lists
-        self.Guide_UI_List_H( self.guide_list_h )
+        self.Guide_UI_List_H( ad, self.guide_list_h )
     def Guide_Mirror_Vertical( self, boolean ):
+        # Krita
+        ad = Krita.instance().activeDocument()
+        # Variables
         self.guide_mirror_v = boolean
+        # Interface
         if boolean == True:
-            # Widget
+            # Interface
             self.ui_guide.guide_mirror_v.setText( "Vertical [Mirror]" )
-            # document
-            width = Krita.instance().activeDocument().width()
+            # Document
+            width = ad.width()
             w2 = width * 0.5
-            guide_mirror = set()
-            # Cycle
-            for i in range( 0, len( self.guide_list_v ) ):
-                # Entry
-                entry = self.guide_list_v[i]
-                guide_mirror.add( entry )
-                # Reflect
-                delta = entry - w2
-                if ( entry < w2 ) or ( entry > w2 ):
-                    reflect = w2 + delta
-                    guide_mirror.add( reflect )
-                # Set
-            guide_mirror = sorted( list( guide_mirror ) )
-            self.guide_list_v = guide_mirror.copy()
+            # Mirror
+            for guide in self.guide_list_v:
+                value = width - guide
+                if ( value not in self.guide_list_v ) and ( value != w2 ):
+                    self.guide_list_v.append( value )
+            self.guide_list_v.sort()
+            self.Guide_Write_V( ad, self.guide_list_v )
         else:
             self.ui_guide.guide_mirror_v.setText( "Vertical" )
         # Lists
-        self.Guide_UI_List_V( self.guide_list_v )
-
-    def Guide_Value_Horizontal( self ):
-        # Variables
         ad = Krita.instance().activeDocument()
-        row = self.ui_guide.guide_list_h.currentRow()
-        item = self.ui_guide.guide_list_h.item( row )
-        height = ad.height()
-        # Item
-        if item is not None:
-            # Read
-            text = item.text()
-            # Inpute Request
-            title = f"Guide = { text }"
-            num_read = int( float( text ) )
-            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
-            number = self.Limit_Range( number, 0, height )
-            if ok == True:
-                # Apply Item
-                item = self.ui_guide.guide_list_h.item( row )
-                item.setText( str( number ) )
-                # Apply changed Guide to Krita
-                lista = self.guide_list_h.copy()
-                lista[row] = number
-                ad.setHorizontalGuides( lista ) # ad.guidesConfig().setHorizontalGuides( lista )
-    def Guide_Value_Vertical( self ):
-        # Variables
-        ad = Krita.instance().activeDocument()
-        row = self.ui_guide.guide_list_v.currentRow()
-        item = self.ui_guide.guide_list_v.item( row )
-        width = ad.width()
-        # Item
-        if item is not None:
-            # Read
-            text = item.text()
-            # Inpute Request
-            title = f"Guide = { text }"
-            num_read = int( float ( text ) )
-            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
-            number = self.Limit_Range( number, 0, width )
-            if ok == True:
-                # Apply Item
-                item = self.ui_guide.guide_list_v.item( row )
-                item.setText( str( number ) )
-                # Apply changed Guide to Krita
-                lista = self.guide_list_v.copy()
-                lista[row] = number
-                ad.setVerticalGuides( lista ) # ad.guidesConfig().setVerticalGuides( lista )
-
-    def Guide_UI_List_H( self, lista ):
-        # Krita
-        ad = Krita.instance().activeDocument()
-        # UI
+        self.Guide_UI_List_V( ad, self.guide_list_v )
+    def Guide_UI_List_H( self, ad, lista ):
+        # Interface
         self.ui_guide.guide_list_h.clear()
         # Variables
-        len_guide = len( self.guide_list_h )
-        len_lista = len( lista )
+        height = ad.height()
+        len_old = len( self.guide_list_h )
+        len_new = len( lista )
         # Changed
-        diff = None
-        if len_guide <= len_lista:
-            for i in range( 0, len_lista ):
-                if lista[i] not in self.guide_list_h:
-                    diff = i
+        dif_i = None
+        inv_i = None
+        for i in range( 0, len_new ):
+            guide = lista[i]
+            invert = height - guide
+            if ( guide not in self.guide_list_h ):                                  dif_i = i
+            if ( guide in self.guide_list_h ) and ( invert not in lista ):          inv_i = i
         # Mirror
         if self.guide_mirror_h == True:
-            # Variables
-            height = ad.height()
-            h2 = height * 0.5
-            meio = len( lista ) * 0.5
-            # Cycle
-            for i in range( 0, len_lista ):
-                if lista[i] != h2:
-                    # Variables
-                    index = len_lista - 1 - i
-                    delta1 = lista[i] - h2
-                    delta2 = lista[index] - h2
-                    invert = h2 - delta1
-                    # State
-                    if len_guide == len_lista: # Equal
-                        if delta1 != delta2:
-                            if self.guide_list_h[i] != lista[i]:
-                                lista[index] = self.Limit_Range( h2 - delta1, 0, height )
-                    if len_guide < len_lista: # Add
-                        if invert not in lista:
-                            lista.append( invert )
-                            break
-                    if len_guide > len_lista: # Subtract
-                        if invert not in lista:
-                            lista.pop( i )
-                            break
-            lista.sort()
+            if ( len_old == len_new ) and ( dif_i != None ) and ( inv_i != None ):  lista[inv_i] = height - lista[dif_i]
+            elif ( len_old < len_new ) and ( dif_i != None ):                       lista.append( height - lista[dif_i] )
+            elif ( len_old > len_new ) and ( inv_i != None ):                       lista.pop( inv_i )
         # Prepare for next Cycle
         self.guide_list_h = lista.copy()
-        # Apply to Krita
-        ad.setHorizontalGuides( self.guide_list_h ) # ad.guidesConfig().setHorizontalGuides( self.guide_list_h )
+        self.guide_list_h.sort()
+        self.Guide_Write_H( ad, self.guide_list_h )
         # Widget List
         for value in lista:
             item = QListWidgetItem( str( value ) )
             self.ui_guide.guide_list_h.addItem( item )
-        if diff != None:
-            self.ui_guide.guide_list_h.setCurrentRow( diff )
-    def Guide_UI_List_V( self, lista ):
-        # Krita
-        ad = Krita.instance().activeDocument()
-        # UI
+        if dif_i != None:
+            self.ui_guide.guide_list_h.setCurrentRow( dif_i )
+    def Guide_UI_List_V( self, ad, lista ):
+        # Interface
         self.ui_guide.guide_list_v.clear()
         # Variables
-        len_guide = len( self.guide_list_v )
-        len_lista = len( lista )
+        width = ad.width()
+        len_old = len( self.guide_list_v )
+        len_new = len( lista )
         # Changed
-        diff = None
-        if len_guide <= len_lista:
-            for i in range( 0, len_lista ):
-                if lista[i] not in self.guide_list_v:
-                    diff = i
+        dif_i = None
+        inv_i = None
+        for i in range( 0, len_new ):
+            guide = lista[i]
+            invert = width - guide
+            if ( guide not in self.guide_list_v ):                                  dif_i = i
+            if ( guide in self.guide_list_v ) and ( invert not in lista ):          inv_i = i
         # Mirror
-        if self.guide_mirror_v == True:
-            # Variables
-            width = ad.width()
-            w2 = width * 0.5
-            meio = len( lista ) * 0.5
-            # Cycle
-            for i in range( 0, len_lista ):
-                if lista[i] != w2:
-                    # Variables
-                    index = len_lista - 1 - i
-                    delta1 = lista[i] - w2
-                    delta2 = lista[index] - w2
-                    invert = w2 - delta1
-                    # State
-                    if len_guide == len_lista: # Equal
-                        if delta1 != delta2:
-                            if self.guide_list_v[i] != lista[i]:
-                                lista[index] = self.Limit_Range( w2 - delta1, 0, width )
-                    if len_guide < len_lista: # Add
-                        if invert not in lista:
-                            lista.append( invert )
-                            break
-                    if len_guide > len_lista: # Subtract
-                        if invert not in lista:
-                            lista.pop( i )
-                            break
-            lista.sort()
+        if self.guide_mirror_h == True:
+            if ( len_old == len_new ) and ( dif_i != None ) and ( inv_i != None ):  lista[inv_i] = width - lista[dif_i]
+            elif ( len_old < len_new ) and ( dif_i != None ):                       lista.append( width - lista[dif_i] )
+            elif ( len_old > len_new ) and ( inv_i != None ):                       lista.pop( inv_i )
         # Prepare for next Cycle
         self.guide_list_v = lista.copy()
-        # Apply to Krita
-        ad.setVerticalGuides( self.guide_list_v ) # ad.guidesConfig().setVerticalGuides( self.guide_list_v )
+        self.guide_list_v.sort()
+        self.Guide_Write_V( ad, self.guide_list_v )
         # Widget List
         for value in lista:
             item = QListWidgetItem( str( value ) )
             self.ui_guide.guide_list_v.addItem( item )
-        if diff != None:
-            self.ui_guide.guide_list_v.setCurrentRow( diff )
-
+        if dif_i != None:
+            self.ui_guide.guide_list_v.setCurrentRow( dif_i )
     def Guide_UI_Ruler( self, boolean ):
         self.ui_guide.guide_ruler.setChecked( boolean )
     def Guide_UI_Show( self, boolean ):
@@ -2484,6 +2653,54 @@ class Tela_Extension( Extension ):
         self.ui_guide.guide_snap.setChecked( boolean )
     def Guide_UI_Lock( self, boolean ):
         self.ui_guide.guide_lock.setChecked( boolean )
+
+    # Functions
+    def Guide_Value_Horizontal( self ):
+        # Variables
+        ad = Krita.instance().activeDocument()
+        height = ad.height()
+        row = self.ui_guide.guide_list_h.currentRow()
+        item = self.ui_guide.guide_list_h.item( row )
+        lista = self.guide_list_h.copy()
+        # Item
+        if item is not None:
+            # Input Value
+            text = item.text()
+            title = f"Guide = { text }"
+            num_read = int( float( text ) )
+            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
+            number = self.Limit_Range( number, 0, height )
+            # Update
+            if ( ok == True ) and ( 0 <= number <= height ):    lista[row] = number
+            else:                                               lista.pop( row )
+            lista.sort()
+            self.Guide_UI_List_H( ad, lista )
+    def Guide_Value_Vertical( self ):
+        # Variables
+        ad = Krita.instance().activeDocument()
+        width = ad.width()
+        row = self.ui_guide.guide_list_v.currentRow()
+        item = self.ui_guide.guide_list_v.item( row )
+        lista = self.guide_list_v.copy()
+        # Item
+        if item is not None:
+            # Input Value
+            text = item.text()
+            title = f"Guide = { text }"
+            num_read = int( float( text ) )
+            number, ok = QInputDialog.getInt( self.ui_guide, "Input Guide Value", title, num_read )
+            number = self.Limit_Range( number, 0, width )
+            # Update
+            if ( ok == True ) and ( 0 <= number <= width ):     lista[row] = number
+            else:                                               lista.pop( row )
+            lista.sort()
+            self.Guide_UI_List_V( ad, lista )
+    def Guide_Write_H( self, ad, lista ):
+        ad.setHorizontalGuides( lista ) # deprecated but still works best
+        # ad.guidesConfig().setHorizontalGuides( lista )
+    def Guide_Write_V( self, ad, lista ):
+        ad.setVerticalGuides( lista ) # deprecated but still works best
+        # ad.guidesConfig().setVerticalGuides( lista )
 
     #endregion
     #region Color Picker
@@ -2799,6 +3016,52 @@ class Tela_Extension( Extension ):
         self.Menu_Clear()
 
     #endregion
+    #region Export Selection ( WIP )
+
+    def Export_Selection( self ):
+        if ( self.canvas() != None ) and ( self.canvas().view() != None ):
+            # File
+            file_dialog = QFileDialog( QWidget( self ) )
+            file_dialog.setFileMode( QFileDialog.FileMode.AnyFile )
+            save_path = file_dialog.getSaveFileName( self, "Export Location", "", "*.png" )[0]
+
+            # Run the Export
+            if save_path != None:
+                self.Export_RUN( save_path )
+    def Export_RUN( self, save_path ):
+        # Read
+        ki = Krita.instance()
+        ad = ki.activeDocument()
+        node = ad.activeNode()
+        adw = ad.width()
+        adh = ad.height()
+
+        # Selection
+        ss = ad.selection()
+        if ss == None: # Create a selection
+            px = 0
+            py = 0
+            pw = ad.width()
+            ph = ad.height()
+        else: # Custom
+            px = ss.x()
+            py = ss.y()
+            pw = ss.width()
+            ph = ss.height()
+
+        # QImage
+        qimage_thumbnail = ad.thumbnail( adw, adh )
+        qimage_selection = qimage_thumbnail.copy( int( px ), int( py ), int( pw ), int( ph ) )
+        mode = Qt.SmoothTransformation
+        if ( self.export_width_state == True and self.export_height_state == False ):
+            qimage_scale = qimage_selection.scaledToWidth( int( self.export_width_value ), mode )
+        elif ( self.export_width_state == False and self.export_height_state == True ):
+            qimage_scale = qimage_selection.scaledToHeight( int( self.export_height_value ), mode )
+        else:
+            qimage_scale = qimage_selection
+        qimage_scale.save( save_path )
+
+    #endregion
     #region Notifier
 
     def Application_Closing( self ):
@@ -2842,6 +3105,7 @@ class Tela_Extension( Extension ):
     def Theme_Changed( self ):
         self.Style_Theme()
         self.Style_Icon()
+        self.Krita_Action_Icon_Read()
     def Window_Closed( self ):
         pass
 
@@ -2876,22 +3140,26 @@ class Tela_Extension( Extension ):
         action_tela = window.createAction( "tela_menu", "Tela", "tools/scripts" )
         action_tela.setMenu( menu_tela )
         # Tool Menu
-        menu_toolbox = QtWidgets.QMenu( "toolbox_menu", window.qwindow() )
-        action_toolbox = window.createAction( "toolbox_menu", "Toolbox", "tools/scripts/tela_menu" )
+        menu_toolbox = QtWidgets.QMenu( "tela_toolbox_menu", window.qwindow() )
+        action_toolbox = window.createAction( "tela_toolbox_menu", "Toolbox", "tools/scripts/tela_menu" )
         action_toolbox.setMenu( menu_toolbox )
+        # Canvas Menus
+        menu_canvas = QtWidgets.QMenu( "tela_canvas_menu", window.qwindow() )
+        action_canvas = window.createAction( "tela_canvas_menu", "Canvas", "tools/scripts/tela_menu" )
+        action_canvas.setMenu( menu_canvas )
         # Mirror Fix Menu
-        menu_mirror_fix = QtWidgets.QMenu( "mirror_fix_menu", window.qwindow() )
-        action_mirror_fix = window.createAction( "mirror_fix_menu", "Mirror Fix", "tools/scripts/tela_menu" )
+        menu_mirror_fix = QtWidgets.QMenu( "tela_mirror_fix_menu", window.qwindow() )
+        action_mirror_fix = window.createAction( "tela_mirror_fix_menu", "Mirror Fix", "tools/scripts/tela_menu" )
         action_mirror_fix.setMenu( menu_mirror_fix )
 
-        # Toolbox
-        self.action_tool_vector      = window.createAction( "tela_extension_tool_vector",    "Tool1 Vector",      "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_brush       = window.createAction( "tela_extension_tool_brush",     "Tool2 Brush",       "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_transform   = window.createAction( "tela_extension_tool_transform", "Tool3 Transform",   "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_color       = window.createAction( "tela_extension_tool_color",     "Tool4 Color",       "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_overlay     = window.createAction( "tela_extension_tool_overlay",   "Tool5 Overlay",     "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_select      = window.createAction( "tela_extension_tool_select",    "Tool6 Select",      "tools/scripts/tela_menu/toolbox_menu" )
-        self.action_tool_camera      = window.createAction( "tela_extension_tool_camera",    "Tool7 Camera",      "tools/scripts/tela_menu/toolbox_menu" )
+        # Toolbox Tools
+        self.action_tool_vector    = window.createAction( "tela_extension_tool1_vector",    "Tool1 Vector",    "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_brush     = window.createAction( "tela_extension_tool2_brush",     "Tool2 Brush",     "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_transform = window.createAction( "tela_extension_tool3_transform", "Tool3 Transform", "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_color     = window.createAction( "tela_extension_tool4_color",     "Tool4 Color",     "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_overlay   = window.createAction( "tela_extension_tool5_overlay",   "Tool5 Overlay",   "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_select    = window.createAction( "tela_extension_tool6_select",    "Tool6 Select",    "tools/scripts/tela_menu/tela_toolbox_menu" )
+        self.action_tool_camera    = window.createAction( "tela_extension_tool7_camera",    "Tool7 Camera",    "tools/scripts/tela_menu/tela_toolbox_menu" )
         self.action_tool_vector.setCheckable( True )
         self.action_tool_brush.setCheckable( True )
         self.action_tool_transform.setCheckable( True )
@@ -2907,15 +3175,22 @@ class Tela_Extension( Extension ):
         self.action_tool_select.triggered.connect( self.Release_Select )
         self.action_tool_camera.triggered.connect( self.Release_Camera )
 
+        # Actions Shelf Action Menu
+        action_shelf_action = window.createAction( "tela_extension_shelf_action", "Shelf Action", "tools/scripts/tela_menu/tela_canvas_menu" )
+        action_shelf_action.triggered.connect( self.Menu_Shelf_Action )
+        # Actions Resource Preset
+        action_shelf_preset = window.createAction( "tela_extension_shelf_resource_preset", "Shelf Resource Preset", "tools/scripts/tela_menu/tela_canvas_menu" )
+        action_shelf_preset.triggered.connect( self.Menu_Shelf_ResourcePreset )
+
         # Actions Mirror Fix
-        action_mirror_fix_left  = window.createAction( "tela_extension_mirror_fix_left",  "Mirror Fix [LEFT]",  "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_right = window.createAction( "tela_extension_mirror_fix_right", "Mirror Fix [RIGHT]", "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_top   = window.createAction( "tela_extension_mirror_fix_top",   "Mirror Fix [TOP]",   "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_down  = window.createAction( "tela_extension_mirror_fix_down",  "Mirror Fix [DOWN]",  "tools/scripts/tela_menu/mirror_fix_menu" )
-        action_mirror_fix_left.triggered.connect(  lambda: self.MirrorFix_Side( "LEFT" ) )
+        action_mirror_fix_left  = window.createAction( "tela_extension_mirror_fix_left",  "Mirror Fix [LEFT]",  "tools/scripts/tela_menu/tela_mirror_fix_menu" )
+        action_mirror_fix_right = window.createAction( "tela_extension_mirror_fix_right", "Mirror Fix [RIGHT]", "tools/scripts/tela_menu/tela_mirror_fix_menu" )
+        action_mirror_fix_top   = window.createAction( "tela_extension_mirror_fix_top",   "Mirror Fix [TOP]",   "tools/scripts/tela_menu/tela_mirror_fix_menu" )
+        action_mirror_fix_down  = window.createAction( "tela_extension_mirror_fix_down",  "Mirror Fix [DOWN]",  "tools/scripts/tela_menu/tela_mirror_fix_menu" )
+        action_mirror_fix_left.triggered.connect( lambda: self.MirrorFix_Side( "LEFT" ) )
         action_mirror_fix_right.triggered.connect( lambda: self.MirrorFix_Side( "RIGHT" ) )
-        action_mirror_fix_top.triggered.connect(   lambda: self.MirrorFix_Side( "TOP" ) )
-        action_mirror_fix_down.triggered.connect(  lambda: self.MirrorFix_Side( "DOWN" ) )
+        action_mirror_fix_top.triggered.connect( lambda: self.MirrorFix_Side( "TOP" ) )
+        action_mirror_fix_down.triggered.connect( lambda: self.MirrorFix_Side( "DOWN" ) )
 
         # Actions Picker
         action_picker_to_cursor = window.createAction( "tela_extension_picker_to_cursor", "Picker to Cursor", "tools/scripts/tela_menu" )
@@ -3017,6 +3292,12 @@ class Tela_Extension( Extension ):
 Krita:
 - Krita changed guides info from document to guidesGonfig module. however you read with guideConfig but set with the deprecated document.
 
+ToDo:
+- Exporter
+
 New:
-- Lighter Pulse Cycle and Eraser Checks
+- Lighter Pulse Cycle and Eraser Checks 
+- Shelf Brush Preset
+- Shelf Action
+- Guide Refactor
 """

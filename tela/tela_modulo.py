@@ -129,12 +129,12 @@ class Color_Display( QWidget ):
 
     # Paint Style
     def paintEvent( self, event ):
-        # Start Painter
         painter = QPainter( self )
         painter.setRenderHint( QtGui.QPainter.Antialiasing, True )
         painter.setPen( QtCore.Qt.NoPen )
         painter.setBrush( QBrush( self.hex6 ) )
         painter.drawRect( 0, 0, int( self.ww ), int( self.hh ) )
+        painter.end()
 
 class Color_Panel( QWidget ):
     SIGNAL_PREVIEW = QtCore.pyqtSignal( list )
@@ -355,6 +355,9 @@ class Color_Panel( QWidget ):
         else:
             # Cursor
             self.Cursor( painter )
+
+        # Painter
+        painter.end()
     def Circles( self, painter, px, py, side ):
         # Circle 0 ( Everything )
         v0a = 0.02

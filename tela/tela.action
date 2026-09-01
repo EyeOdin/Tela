@@ -3,10 +3,10 @@
     <Actions category="Scripts">
         <text>Tela</text>
 
-        <!-- ToolBox -->
-        <Action name="tela_extension_tool_vector">
+        <!-- ToolBox Tools -->
+        <Action name="tela_extension_tool1_vector">
           <icon></icon>
-          <text>Tool Vector</text>
+          <text>Tool1 Vector</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -16,9 +16,9 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_brush">
+        <Action name="tela_extension_tool2_brush">
           <icon></icon>
-          <text>Tool Brush</text>
+          <text>Tool2 Brush</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -28,9 +28,9 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_transform">
+        <Action name="tela_extension_tool3_transform">
           <icon></icon>
-          <text>Tool Transform</text>
+          <text>Tool3 Transform</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -40,9 +40,9 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_color">
+        <Action name="tela_extension_tool4_color">
           <icon></icon>
-          <text>Tool Color</text>
+          <text>Tool4 Color</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -52,9 +52,9 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_overlay">
+        <Action name="tela_extension_tool5_overlay">
           <icon></icon>
-          <text>Tool Overlay</text>
+          <text>Tool5 Overlay</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -64,9 +64,9 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_select">
+        <Action name="tela_extension_tool6_select">
           <icon></icon>
-          <text>Tool Select</text>
+          <text>Tool6 Select</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
@@ -76,9 +76,37 @@
           <isCheckable>false</isCheckable>
           <statusTip></statusTip>
         </Action>
-        <Action name="tela_extension_tool_camera">
+        <Action name="tela_extension_tool7_camera">
           <icon></icon>
-          <text>Tool Camera</text>
+          <text>Tool7 Camera</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+
+        <!-- Radial Menu -->
+        <Action name="tela_extension_shelf_action">
+          <icon></icon>
+          <text>Shelf Action</text>
+          <whatsThis></whatsThis>
+          <toolTip></toolTip>
+          <iconText></iconText>
+          <activationFlags></activationFlags>
+          <activationConditions></activationConditions>
+          <shortcut>none</shortcut>
+          <isCheckable>false</isCheckable>
+          <statusTip></statusTip>
+        </Action>
+
+        <!-- Resources -->
+        <Action name="tela_extension_shelf_resource_preset">
+          <icon></icon>
+          <text>Shelf Resource Preset</text>
           <whatsThis></whatsThis>
           <toolTip></toolTip>
           <iconText></iconText>
