@@ -1969,7 +1969,7 @@ class Tela_Extension( Extension ):
 
         # Menu
         self.qmenu = QMenu()
-        self.qmenu.addSection( f"Shelf Brush Preset" )
+        self.qmenu.addSection( f"Shelf Resource Preset" )
         # Manage
         action_preset_append = self.qmenu.addAction( f"Append [ { current_preset } ]" )
         menu_manage = self.qmenu.addMenu( "Manage" )
